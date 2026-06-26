@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, TextInput,
   ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView
@@ -10,6 +10,11 @@ export default function LoginScreen({ navigation, onLoginSuccess }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
+  const [focusedField, setFocusedField] = useState(null);
+
+  const passwordRef = useRef(null);
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -49,7 +54,8 @@ export default function LoginScreen({ navigation, onLoginSuccess }) {
           <Text style={styles.cardTitle}>Welcome back</Text>
           <Text style={styles.cardSubtitle}>Sign in to your account</Text>
 
-          <View style={styles.inputWrapper}>
+          {/* Email */}
+          <View style={[styles.inputWrapper, focusedField === 'email' && styles.inputWrapperFocused]}>
             <Text style={styles.inputIcon}>📧</Text>
             <TextInput
               style={styles.input}
@@ -59,30 +65,62 @@ export default function LoginScreen({ navigation, onLoginSuccess }) {
               onChangeText={setEmail}
               keyboardType="email-address"
               autoCapitalize="none"
+              returnKeyType="next"
+              onSubmitEditing={() => passwordRef.current?.focus()}
+              onFocus={() => setFocusedField('email')}
+              onBlur={() => setFocusedField(null)}
             />
           </View>
 
-          <View style={styles.inputWrapper}>
+          {/* Password */}
+          <View style={[styles.inputWrapper, focusedField === 'password' && styles.inputWrapperFocused]}>
             <Text style={styles.inputIcon}>🔒</Text>
             <TextInput
+              ref={passwordRef}
               style={styles.input}
               placeholder="Password"
               placeholderTextColor="#6b7db3"
               value={password}
               onChangeText={setPassword}
-              secureTextEntry
+              secureTextEntry={!showPassword}
+              returnKeyType="done"
+              onSubmitEditing={handleLogin}
+              onFocus={() => setFocusedField('password')}
+              onBlur={() => setFocusedField(null)}
             />
+            <TouchableOpacity
+              onPress={() => setShowPassword(prev => !prev)}
+              style={styles.eyeButton}
+            >
+              <Text style={styles.eyeIcon}>{showPassword ? '🙈' : '👁️'}</Text>
+            </TouchableOpacity>
           </View>
 
+          {/* Remember me */}
+          <TouchableOpacity
+            style={styles.rememberRow}
+            onPress={() => setRememberMe(prev => !prev)}
+          >
+            <View style={[styles.checkbox, rememberMe && styles.checkboxActive]}>
+              {rememberMe && <Text style={styles.checkmark}>✓</Text>}
+            </View>
+            <Text style={styles.rememberText}>Remember me</Text>
+          </TouchableOpacity>
+
+          {/* Sign In button */}
           <TouchableOpacity
             style={[styles.button, loading && styles.buttonLoading]}
             onPress={handleLogin}
             disabled={loading}
           >
-            {loading
-              ? <ActivityIndicator color="#1A2744" />
-              : <Text style={styles.buttonText}>Sign In</Text>
-            }
+            {loading ? (
+              <View style={styles.buttonInner}>
+                <ActivityIndicator color="#1A2744" size="small" />
+                <Text style={styles.buttonText}>Signing in...</Text>
+              </View>
+            ) : (
+              <Text style={styles.buttonText}>Sign In</Text>
+            )}
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -135,8 +173,30 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: '#2d3e6e',
     paddingHorizontal: 14, marginBottom: 14,
   },
+  inputWrapperFocused: {
+    borderColor: '#F5A623',
+    shadowColor: '#F5A623', shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.2, shadowRadius: 6, elevation: 2,
+  },
   inputIcon: { fontSize: 16, marginRight: 10 },
   input: { flex: 1, paddingVertical: 14, fontSize: 15, color: '#fff' },
+  eyeButton: { padding: 4 },
+  eyeIcon: { fontSize: 18 },
+
+  // Remember me
+  rememberRow: {
+    flexDirection: 'row', alignItems: 'center',
+    gap: 10, marginBottom: 20,
+  },
+  checkbox: {
+    width: 20, height: 20, borderRadius: 6,
+    borderWidth: 2, borderColor: '#2d3e6e',
+    backgroundColor: '#243260',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  checkboxActive: { backgroundColor: '#F5A623', borderColor: '#F5A623' },
+  checkmark: { fontSize: 12, fontWeight: '800', color: '#1A2744' },
+  rememberText: { fontSize: 14, color: '#a0aec0' },
 
   // Button
   button: {
@@ -145,7 +205,8 @@ const styles = StyleSheet.create({
     shadowColor: '#F5A623', shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4, shadowRadius: 10, elevation: 6,
   },
-  buttonLoading: { opacity: 0.8 },
+  buttonLoading: { opacity: 0.85 },
+  buttonInner: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   buttonText: { color: '#1A2744', fontSize: 17, fontWeight: '800' },
 
   // Footer
