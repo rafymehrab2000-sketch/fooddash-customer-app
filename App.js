@@ -19,15 +19,19 @@ function MainTabs() {
   return (
     <Tab.Navigator
       screenOptions={{
-        tabBarActiveTintColor: '#ff6b35',
-        tabBarInactiveTintColor: '#888',
+        tabBarActiveTintColor: '#F5A623',
+        tabBarInactiveTintColor: '#4a5d80',
         tabBarStyle: {
-          backgroundColor: '#fff',
+          backgroundColor: '#1A2744',
           borderTopWidth: 1,
-          borderTopColor: '#f0f0f0',
+          borderTopColor: '#2d3e6e',
           paddingBottom: 8,
           paddingTop: 8,
           height: 60,
+        },
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: '600',
         },
         headerShown: false,
       }}
