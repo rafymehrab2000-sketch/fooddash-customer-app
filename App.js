@@ -14,6 +14,7 @@ import OrderTrackingScreen from './screens/OrderTrackingScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import SplashScreen from './screens/SplashScreen';
 import NotificationsScreen from './screens/NotificationsScreen';
+import SearchScreen from './screens/SearchScreen';
 
 function CartTabScreen({ navigation }) {
   return (
@@ -134,6 +135,7 @@ export default function App() {
             <Stack.Screen name="Main" component={MainTabs} />
             <Stack.Screen name="Restaurant" component={RestaurantScreen} />
             <Stack.Screen name="Cart" component={CartScreen} />
+            <Stack.Screen name="Search" component={SearchScreen} />
           </>
         )}
       </Stack.Navigator>

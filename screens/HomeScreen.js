@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity,
-  StyleSheet, ActivityIndicator, TextInput, RefreshControl, ScrollView, Animated
+  StyleSheet, ActivityIndicator, RefreshControl, ScrollView, Animated
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import API from '../services/api';
@@ -62,10 +62,8 @@ export default function HomeScreen({ navigation }) {
   const [restaurants, setRestaurants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
   const [activeSort, setActiveSort] = useState('Default');
-  const [searchFocused, setSearchFocused] = useState(false);
   const [greeting, setGreeting] = useState('');
   const [userName, setUserName] = useState('');
 
@@ -100,11 +98,10 @@ export default function HomeScreen({ navigation }) {
 
   const filtered = restaurants
     .filter(r => {
-      const matchesSearch = r.name.toLowerCase().includes(search.toLowerCase());
       const matchesCategory = activeCategory === 'All' ||
         r.name.toLowerCase().includes(activeCategory.toLowerCase()) ||
         r.cuisine?.toLowerCase().includes(activeCategory.toLowerCase());
-      return matchesSearch && matchesCategory;
+      return matchesCategory;
     })
     .sort((a, b) => {
       if (activeSort === 'Open first') return (b.isOpen ? 1 : 0) - (a.isOpen ? 1 : 0);
@@ -132,24 +129,15 @@ export default function HomeScreen({ navigation }) {
           </View>
         </View>
 
-        {/* Search */}
-        <View style={[styles.searchContainer, searchFocused && styles.searchContainerFocused]}>
+        {/* Search (navigates to SearchScreen) */}
+        <TouchableOpacity
+          style={styles.searchContainer}
+          activeOpacity={0.8}
+          onPress={() => navigation.navigate('Search')}
+        >
           <Text style={styles.searchIcon}>🔍</Text>
-          <TextInput
-            style={styles.search}
-            placeholder="Search restaurants..."
-            placeholderTextColor="#6b7db3"
-            value={search}
-            onChangeText={setSearch}
-            onFocus={() => setSearchFocused(true)}
-            onBlur={() => setSearchFocused(false)}
-          />
-          {search.length > 0 && (
-            <TouchableOpacity onPress={() => setSearch('')} style={styles.searchClear}>
-              <Text style={styles.searchClearText}>✕</Text>
-            </TouchableOpacity>
-          )}
-        </View>
+          <Text style={styles.searchPlaceholder}>Search restaurants...</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Featured */}
@@ -247,10 +235,10 @@ export default function HomeScreen({ navigation }) {
               <Text style={styles.emptyIcon}>🍽️</Text>
               <Text style={styles.emptyText}>No restaurants found</Text>
               <Text style={styles.emptySubtext}>Try a different search or category</Text>
-              {(search || activeCategory !== 'All') && (
+              {activeCategory !== 'All' && (
                 <TouchableOpacity
                   style={styles.resetBtn}
-                  onPress={() => { setSearch(''); setActiveCategory('All'); }}
+                  onPress={() => setActiveCategory('All')}
                 >
                   <Text style={styles.resetBtnText}>Clear filters</Text>
                 </TouchableOpacity>
@@ -316,16 +304,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: '#243260', borderRadius: 14,
     borderWidth: 1, borderColor: '#2d3e6e', paddingHorizontal: 14,
-  },
-  searchContainerFocused: {
-    borderColor: '#F5A623',
-    shadowColor: '#F5A623', shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.2, shadowRadius: 6, elevation: 2,
+    paddingVertical: 13,
   },
   searchIcon: { fontSize: 16, marginRight: 8 },
-  search: { flex: 1, paddingVertical: 13, fontSize: 15, color: '#fff' },
-  searchClear: { padding: 4 },
-  searchClearText: { color: '#6b7db3', fontSize: 14 },
+  searchPlaceholder: { fontSize: 15, color: '#6b7db3', flex: 1 },
 
   // Category pills
   categoriesWrapper: { backgroundColor: '#1A2744', paddingBottom: 16 },
