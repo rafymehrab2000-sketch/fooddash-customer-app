@@ -12,6 +12,7 @@ import CartScreen from './screens/CartScreen';
 import OrderTrackingScreen from './screens/OrderTrackingScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import SplashScreen from './screens/SplashScreen';
+import NotificationsScreen from './screens/NotificationsScreen';
 
 function CartTabScreen({ navigation }) {
   return (
@@ -83,6 +84,7 @@ function MainTabs() {
       <Tab.Screen name="Home" component={HomeScreen} options={{ tabBarIcon: ({ color }) => <Text style={{ fontSize: 22, color }}>🏠</Text>, tabBarLabel: 'Home' }} />
       <Tab.Screen name="CartTab" component={CartTabScreen} options={{ tabBarIcon: ({ color }) => <Text style={{ fontSize: 22, color }}>🛒</Text>, tabBarLabel: 'Cart' }} />
       <Tab.Screen name="Orders" component={OrderTrackingScreen} options={{ tabBarIcon: ({ color }) => <Text style={{ fontSize: 22, color }}>🧾</Text>, tabBarLabel: 'Orders' }} />
+      <Tab.Screen name="Notifications" component={NotificationsScreen} options={{ tabBarIcon: ({ color }) => <Text style={{ fontSize: 22, color }}>🔔</Text>, tabBarLabel: 'Alerts' }} />
       <Tab.Screen name="Profile" component={ProfileScreen} options={{ tabBarIcon: ({ color }) => <Text style={{ fontSize: 22, color }}>👤</Text>, tabBarLabel: 'Profile' }} />
     </Tab.Navigator>
   );
