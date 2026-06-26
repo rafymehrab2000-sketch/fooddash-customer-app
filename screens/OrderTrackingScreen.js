@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
-  View, Text, FlatList, StyleSheet,
-  ActivityIndicator, RefreshControl
+  View, Text, FlatList, StyleSheet, TouchableOpacity,
+  ActivityIndicator, RefreshControl, Alert
 } from 'react-native';
 import API from '../services/api';
 
@@ -32,6 +32,98 @@ const getStatusEmoji = (status) => {
 };
 
 const STATUS_STEPS = ['pending', 'accepted', 'preparing', 'ready', 'out_for_delivery', 'delivered'];
+
+const ACTIVE_STATUSES = ['accepted', 'preparing', 'ready', 'out_for_delivery'];
+
+const MOCK_RIDERS = [
+  { name: 'Marco Rossi', rating: 4.9, trips: 1240 },
+  { name: 'Sara Ahmed', rating: 4.8, trips: 876 },
+  { name: 'James Okafor', rating: 4.7, trips: 543 },
+];
+
+function StarRating({ rating }) {
+  const full = Math.floor(rating);
+  const half = rating % 1 >= 0.5;
+  return (
+    <View style={styles.starsRow}>
+      {[1, 2, 3, 4, 5].map(i => (
+        <Text key={i} style={styles.star}>
+          {i <= full ? '★' : (i === full + 1 && half) ? '½' : '☆'}
+        </Text>
+      ))}
+      <Text style={styles.ratingValue}>{rating.toFixed(1)}</Text>
+    </View>
+  );
+}
+
+function ETATimer({ startSeconds = 30 * 60 }) {
+  const [seconds, setSeconds] = useState(startSeconds);
+  const intervalRef = useRef(null);
+
+  useEffect(() => {
+    intervalRef.current = setInterval(() => {
+      setSeconds(prev => (prev <= 1 ? 0 : prev - 1));
+    }, 1000);
+    return () => clearInterval(intervalRef.current);
+  }, []);
+
+  useEffect(() => {
+    if (seconds === 0) clearInterval(intervalRef.current);
+  }, [seconds]);
+
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  const pad = n => String(n).padStart(2, '0');
+
+  return (
+    <View style={styles.etaBox}>
+      <Text style={styles.etaLabel}>Estimated arrival</Text>
+      <Text style={styles.etaTime}>{pad(mins)}:{pad(secs)}</Text>
+      <Text style={styles.etaSubLabel}>{seconds === 0 ? 'Arriving now!' : 'minutes remaining'}</Text>
+    </View>
+  );
+}
+
+function RiderCard({ orderId }) {
+  const rider = MOCK_RIDERS[orderId % MOCK_RIDERS.length];
+  return (
+    <View style={styles.riderCard}>
+      <View style={styles.riderTop}>
+        <View style={styles.riderAvatarWrapper}>
+          <View style={styles.riderAvatar}>
+            <Text style={styles.riderAvatarText}>{rider.name.charAt(0)}</Text>
+          </View>
+          <View style={styles.riderOnlineDot} />
+        </View>
+        <View style={styles.riderInfo}>
+          <Text style={styles.riderLabel}>Your rider</Text>
+          <Text style={styles.riderName}>{rider.name}</Text>
+          <StarRating rating={rider.rating} />
+          <Text style={styles.riderTrips}>{rider.trips.toLocaleString()} deliveries</Text>
+        </View>
+        <ETATimer />
+      </View>
+      <View style={styles.riderDivider} />
+      <View style={styles.riderActions}>
+        <TouchableOpacity
+          style={styles.riderActionBtn}
+          onPress={() => Alert.alert('Call Rider', `Calling ${rider.name}...`)}
+        >
+          <Text style={styles.riderActionIcon}>📞</Text>
+          <Text style={styles.riderActionText}>Call</Text>
+        </TouchableOpacity>
+        <View style={styles.riderActionDivider} />
+        <TouchableOpacity
+          style={styles.riderActionBtn}
+          onPress={() => Alert.alert('Message Rider', `Opening chat with ${rider.name}...`)}
+        >
+          <Text style={styles.riderActionIcon}>💬</Text>
+          <Text style={styles.riderActionText}>Message</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
 
 export default function OrderTrackingScreen() {
   const [orders, setOrders] = useState([]);
@@ -90,6 +182,11 @@ export default function OrderTrackingScreen() {
 
       {/* Progress bar */}
       {renderProgressBar(item.status)}
+
+      {/* Rider card — shown for active orders */}
+      {ACTIVE_STATUSES.includes(item.status) && (
+        <RiderCard orderId={item.id} />
+      )}
 
       {/* Items */}
       <View style={styles.itemsSection}>
@@ -191,24 +288,62 @@ const styles = StyleSheet.create({
   statusText: { color: '#fff', fontSize: 12, fontWeight: '700', textTransform: 'capitalize' },
 
   // Progress bar
-  progressRow: {
-    flexDirection: 'row', alignItems: 'center',
-    marginBottom: 16,
-  },
+  progressRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
   progressStepWrapper: { flexDirection: 'row', alignItems: 'center', flex: 1 },
-  progressDot: {
-    width: 10, height: 10, borderRadius: 5,
-    backgroundColor: '#2d3e6e',
-  },
+  progressDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#2d3e6e' },
   progressDotActive: { backgroundColor: '#F5A623' },
   progressDotCurrent: {
-    width: 14, height: 14, borderRadius: 7,
-    backgroundColor: '#F5A623',
+    width: 14, height: 14, borderRadius: 7, backgroundColor: '#F5A623',
     shadowColor: '#F5A623', shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.8, shadowRadius: 6, elevation: 4,
   },
   progressLine: { flex: 1, height: 2, backgroundColor: '#2d3e6e' },
   progressLineActive: { backgroundColor: '#F5A623' },
+
+  // Rider card
+  riderCard: {
+    backgroundColor: '#0f1a33', borderRadius: 16,
+    marginBottom: 16, overflow: 'hidden',
+  },
+  riderTop: {
+    flexDirection: 'row', alignItems: 'center',
+    padding: 14, gap: 12,
+  },
+  riderAvatarWrapper: { position: 'relative' },
+  riderAvatar: {
+    width: 48, height: 48, borderRadius: 24,
+    backgroundColor: '#F5A623',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  riderAvatarText: { fontSize: 20, fontWeight: '800', color: '#1A2744' },
+  riderOnlineDot: {
+    position: 'absolute', bottom: 1, right: 1,
+    width: 12, height: 12, borderRadius: 6,
+    backgroundColor: '#22c55e', borderWidth: 2, borderColor: '#0f1a33',
+  },
+  riderInfo: { flex: 1 },
+  riderLabel: { fontSize: 11, color: '#6b7db3', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 },
+  riderName: { fontSize: 15, fontWeight: '800', color: '#fff', marginBottom: 4 },
+  starsRow: { flexDirection: 'row', alignItems: 'center', gap: 2, marginBottom: 2 },
+  star: { fontSize: 13, color: '#F5A623' },
+  ratingValue: { fontSize: 12, color: '#a0aec0', marginLeft: 4 },
+  riderTrips: { fontSize: 11, color: '#6b7db3' },
+
+  // ETA
+  etaBox: { alignItems: 'center', minWidth: 80 },
+  etaLabel: { fontSize: 10, color: '#6b7db3', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 },
+  etaTime: { fontSize: 22, fontWeight: '800', color: '#F5A623', fontVariant: ['tabular-nums'] },
+  etaSubLabel: { fontSize: 10, color: '#6b7db3', marginTop: 2, textAlign: 'center' },
+
+  riderDivider: { height: 1, backgroundColor: '#1e2d50', marginHorizontal: 14 },
+  riderActions: { flexDirection: 'row' },
+  riderActionBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'center', gap: 8, paddingVertical: 14,
+  },
+  riderActionDivider: { width: 1, backgroundColor: '#1e2d50', marginVertical: 10 },
+  riderActionIcon: { fontSize: 18 },
+  riderActionText: { fontSize: 14, fontWeight: '700', color: '#fff' },
 
   // Items
   itemsSection: {
