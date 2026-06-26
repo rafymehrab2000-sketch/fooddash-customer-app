@@ -31,6 +31,8 @@ const getStatusEmoji = (status) => {
   }
 };
 
+const STATUS_STEPS = ['pending', 'accepted', 'preparing', 'ready', 'out_for_delivery', 'delivered'];
+
 export default function OrderTrackingScreen() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -51,30 +53,60 @@ export default function OrderTrackingScreen() {
     setRefreshing(false);
   };
 
+  const renderProgressBar = (status) => {
+    if (status === 'cancelled') return null;
+    const currentStep = STATUS_STEPS.indexOf(status);
+    return (
+      <View style={styles.progressRow}>
+        {STATUS_STEPS.map((step, index) => (
+          <View key={step} style={styles.progressStepWrapper}>
+            <View style={[
+              styles.progressDot,
+              index <= currentStep && styles.progressDotActive,
+              index === currentStep && styles.progressDotCurrent,
+            ]} />
+            {index < STATUS_STEPS.length - 1 && (
+              <View style={[styles.progressLine, index < currentStep && styles.progressLineActive]} />
+            )}
+          </View>
+        ))}
+      </View>
+    );
+  };
+
   const renderOrder = ({ item }) => (
     <View style={styles.card}>
+      {/* Card header */}
       <View style={styles.cardHeader}>
-        <Text style={styles.orderId}>Order #{item.id}</Text>
+        <View>
+          <Text style={styles.orderId}>Order #{item.id}</Text>
+          <Text style={styles.restaurantName}>{item.restaurant?.name}</Text>
+        </View>
         <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
-          <Text style={styles.statusText}>
-            {getStatusEmoji(item.status)} {item.status?.replace('_', ' ')}
-          </Text>
+          <Text style={styles.statusEmoji}>{getStatusEmoji(item.status)}</Text>
+          <Text style={styles.statusText}>{item.status?.replace('_', ' ')}</Text>
         </View>
       </View>
 
-      <Text style={styles.restaurantName}>{item.restaurant?.name}</Text>
+      {/* Progress bar */}
+      {renderProgressBar(item.status)}
 
-      <View style={styles.items}>
-        {item.orderItems?.map(orderItem => (
-          <Text key={orderItem.id} style={styles.itemText}>
-            • {orderItem.quantity}x {orderItem.menuItem?.name}
-          </Text>
+      {/* Items */}
+      <View style={styles.itemsSection}>
+        {item.orderItems?.map((orderItem, index) => (
+          <View key={orderItem.id} style={[styles.itemRow, index === item.orderItems.length - 1 && styles.itemRowLast]}>
+            <View style={styles.itemQtyBadge}>
+              <Text style={styles.itemQtyText}>{orderItem.quantity}</Text>
+            </View>
+            <Text style={styles.itemText} numberOfLines={1}>{orderItem.menuItem?.name}</Text>
+          </View>
         ))}
       </View>
 
+      {/* Footer */}
       <View style={styles.cardFooter}>
         <Text style={styles.date}>
-          {new Date(item.createdAt).toLocaleDateString()}
+          🗓 {new Date(item.createdAt).toLocaleDateString()}
         </Text>
         <Text style={styles.total}>€{item.total?.toFixed(2)}</Text>
       </View>
@@ -84,7 +116,7 @@ export default function OrderTrackingScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>🧾 My Orders</Text>
+        <Text style={styles.headerTitle}>My Orders</Text>
         <Text style={styles.headerSubtitle}>Track your deliveries</Text>
       </View>
 
@@ -103,6 +135,11 @@ export default function OrderTrackingScreen() {
               tintColor="#F5A623"
             />
           }
+          ListHeaderComponent={
+            orders.length > 0 && (
+              <Text style={styles.listLabel}>{orders.length} order{orders.length !== 1 ? 's' : ''}</Text>
+            )
+          }
           ListEmptyComponent={
             <View style={styles.empty}>
               <Text style={styles.emptyIcon}>🧾</Text>
@@ -118,28 +155,89 @@ export default function OrderTrackingScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0f1a33' },
-  header: { backgroundColor: '#1A2744', padding: 24, paddingTop: 50 },
-  headerTitle: { fontSize: 28, fontWeight: '700', color: '#F5A623', marginBottom: 4 },
-  headerSubtitle: { fontSize: 16, color: 'rgba(255,255,255,0.7)' },
-  loader: { flex: 1 },
-  list: { padding: 16 },
-  card: {
-    backgroundColor: '#1A2744', borderRadius: 16, padding: 20,
-    marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3, shadowRadius: 8, elevation: 3,
+
+  // Header
+  header: {
+    backgroundColor: '#1A2744', paddingHorizontal: 20,
+    paddingTop: 54, paddingBottom: 24,
   },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  orderId: { fontSize: 16, fontWeight: '700', color: '#fff' },
-  statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
-  statusText: { color: '#fff', fontSize: 12, fontWeight: '600', textTransform: 'capitalize' },
-  restaurantName: { fontSize: 14, color: '#a0aec0', marginBottom: 12 },
-  items: { marginBottom: 12 },
-  itemText: { fontSize: 13, color: '#a0aec0', marginBottom: 4 },
-  cardFooter: { flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: '#2d3e6e', paddingTop: 12 },
+  headerTitle: { fontSize: 28, fontWeight: '800', color: '#F5A623', marginBottom: 4 },
+  headerSubtitle: { fontSize: 15, color: 'rgba(255,255,255,0.6)' },
+
+  loader: { flex: 1 },
+
+  // List
+  list: { padding: 16, paddingTop: 8 },
+  listLabel: { fontSize: 13, color: '#6b7db3', marginBottom: 12, marginTop: 4 },
+
+  // Cards
+  card: {
+    backgroundColor: '#1A2744', borderRadius: 20, padding: 20,
+    marginBottom: 16,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3, shadowRadius: 10, elevation: 5,
+  },
+  cardHeader: {
+    flexDirection: 'row', justifyContent: 'space-between',
+    alignItems: 'flex-start', marginBottom: 16,
+  },
+  orderId: { fontSize: 16, fontWeight: '800', color: '#fff', marginBottom: 3 },
+  restaurantName: { fontSize: 13, color: '#a0aec0' },
+  statusBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20,
+  },
+  statusEmoji: { fontSize: 13 },
+  statusText: { color: '#fff', fontSize: 12, fontWeight: '700', textTransform: 'capitalize' },
+
+  // Progress bar
+  progressRow: {
+    flexDirection: 'row', alignItems: 'center',
+    marginBottom: 16,
+  },
+  progressStepWrapper: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  progressDot: {
+    width: 10, height: 10, borderRadius: 5,
+    backgroundColor: '#2d3e6e',
+  },
+  progressDotActive: { backgroundColor: '#F5A623' },
+  progressDotCurrent: {
+    width: 14, height: 14, borderRadius: 7,
+    backgroundColor: '#F5A623',
+    shadowColor: '#F5A623', shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8, shadowRadius: 6, elevation: 4,
+  },
+  progressLine: { flex: 1, height: 2, backgroundColor: '#2d3e6e' },
+  progressLineActive: { backgroundColor: '#F5A623' },
+
+  // Items
+  itemsSection: {
+    backgroundColor: '#0f1a33', borderRadius: 12,
+    paddingHorizontal: 14, marginBottom: 16,
+  },
+  itemRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#1e2d50',
+  },
+  itemRowLast: { borderBottomWidth: 0 },
+  itemQtyBadge: {
+    width: 22, height: 22, borderRadius: 11,
+    backgroundColor: '#243260', alignItems: 'center', justifyContent: 'center',
+  },
+  itemQtyText: { fontSize: 11, fontWeight: '700', color: '#F5A623' },
+  itemText: { flex: 1, fontSize: 13, color: '#a0aec0' },
+
+  // Footer
+  cardFooter: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    borderTopWidth: 1, borderTopColor: '#2d3e6e', paddingTop: 14,
+  },
   date: { fontSize: 13, color: '#6b7db3' },
-  total: { fontSize: 15, fontWeight: '700', color: '#F5A623' },
-  empty: { alignItems: 'center', paddingTop: 60 },
-  emptyIcon: { fontSize: 48, marginBottom: 16 },
-  emptyText: { fontSize: 18, fontWeight: '600', color: '#fff', marginBottom: 8 },
-  emptySubtext: { fontSize: 14, color: '#a0aec0' },
+  total: { fontSize: 17, fontWeight: '800', color: '#F5A623' },
+
+  // Empty
+  empty: { alignItems: 'center', paddingTop: 80 },
+  emptyIcon: { fontSize: 56, marginBottom: 16 },
+  emptyText: { fontSize: 20, fontWeight: '700', color: '#fff', marginBottom: 8 },
+  emptySubtext: { fontSize: 14, color: '#6b7db3' },
 });
