@@ -1,7 +1,8 @@
 import React, { useState, useRef, useMemo } from 'react';
 import {
   View, Text, TouchableOpacity,
-  StyleSheet, TextInput, Alert, ActivityIndicator, ScrollView
+  StyleSheet, TextInput, Alert, ActivityIndicator, ScrollView,
+  KeyboardAvoidingView, Platform
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import API from '../services/api';
@@ -72,6 +73,7 @@ export default function CartScreen({ route, navigation }) {
   };
 
   return (
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
 
       <View style={styles.header}>
@@ -185,6 +187,7 @@ export default function CartScreen({ route, navigation }) {
       </TouchableOpacity>
 
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
