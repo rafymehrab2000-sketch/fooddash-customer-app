@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity,
   StyleSheet, TextInput, ActivityIndicator, ScrollView, Animated
 } from 'react-native';
 import API from '../services/api';
+import { useTheme } from '../context/ThemeContext';
 
 const CATEGORIES = ['All', 'Burgers', 'Pizza', 'Sushi', 'Asian'];
 
@@ -15,7 +16,7 @@ const CATEGORY_EMOJIS = {
   Asian: '🥢',
 };
 
-function RestaurantCard({ item, onPress }) {
+function RestaurantCard({ item, onPress, styles }) {
   const scale = useRef(new Animated.Value(1)).current;
 
   const onPressIn = () => Animated.spring(scale, { toValue: 0.97, useNativeDriver: true, speed: 30 }).start();
@@ -50,6 +51,9 @@ function RestaurantCard({ item, onPress }) {
 }
 
 export default function SearchScreen({ navigation }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const [restaurants, setRestaurants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -86,7 +90,6 @@ export default function SearchScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      {/* Search bar + cancel */}
       <View style={styles.header}>
         <View style={styles.searchRow}>
           <View style={styles.searchBox}>
@@ -95,7 +98,7 @@ export default function SearchScreen({ navigation }) {
               ref={inputRef}
               style={styles.searchInput}
               placeholder="Search restaurants..."
-              placeholderTextColor="#6b7db3"
+              placeholderTextColor={theme.textMuted}
               value={search}
               onChangeText={setSearch}
               returnKeyType="search"
@@ -112,7 +115,6 @@ export default function SearchScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
-        {/* Category pills */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categories}>
           {CATEGORIES.map(cat => (
             <TouchableOpacity
@@ -128,7 +130,7 @@ export default function SearchScreen({ navigation }) {
       </View>
 
       {loading ? (
-        <ActivityIndicator size="large" color="#F5A623" style={styles.loader} />
+        <ActivityIndicator size="large" color={theme.accent} style={styles.loader} />
       ) : (
         <FlatList
           data={filtered}
@@ -136,6 +138,7 @@ export default function SearchScreen({ navigation }) {
           renderItem={({ item }) => (
             <RestaurantCard
               item={item}
+              styles={styles}
               onPress={() => navigation.navigate('Restaurant', { restaurant: item })}
             />
           )}
@@ -177,85 +180,80 @@ export default function SearchScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0f1a33' },
+function createStyles(t) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: t.bg },
 
-  // Header
-  header: {
-    backgroundColor: '#1A2744',
-    paddingTop: 54, paddingBottom: 12,
-  },
-  searchRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    paddingHorizontal: 16, marginBottom: 14,
-  },
-  searchBox: {
-    flex: 1, flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#243260', borderRadius: 14,
-    borderWidth: 1, borderColor: '#F5A623',
-    paddingHorizontal: 12,
-    shadowColor: '#F5A623', shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.15, shadowRadius: 6, elevation: 2,
-  },
-  searchIcon: { fontSize: 16, marginRight: 8 },
-  searchInput: { flex: 1, paddingVertical: 13, fontSize: 15, color: '#fff' },
-  clearBtn: { padding: 4 },
-  clearBtnText: { color: '#6b7db3', fontSize: 14 },
-  cancelBtn: { paddingVertical: 8, paddingHorizontal: 4 },
-  cancelBtnText: { color: '#F5A623', fontSize: 15, fontWeight: '700' },
+    header: {
+      backgroundColor: t.card,
+      paddingTop: 54, paddingBottom: 12,
+    },
+    searchRow: {
+      flexDirection: 'row', alignItems: 'center', gap: 10,
+      paddingHorizontal: 16, marginBottom: 14,
+    },
+    searchBox: {
+      flex: 1, flexDirection: 'row', alignItems: 'center',
+      backgroundColor: t.inputBg, borderRadius: 14,
+      borderWidth: 1, borderColor: t.accent,
+      paddingHorizontal: 12,
+      shadowColor: t.accent, shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.15, shadowRadius: 6, elevation: 2,
+    },
+    searchIcon: { fontSize: 16, marginRight: 8 },
+    searchInput: { flex: 1, paddingVertical: 13, fontSize: 15, color: t.text },
+    clearBtn: { padding: 4 },
+    clearBtnText: { color: t.textMuted, fontSize: 14 },
+    cancelBtn: { paddingVertical: 8, paddingHorizontal: 4 },
+    cancelBtnText: { color: t.accent, fontSize: 15, fontWeight: '700' },
 
-  // Category pills
-  categories: { paddingHorizontal: 16, gap: 8, paddingBottom: 4 },
-  pill: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    paddingHorizontal: 14, paddingVertical: 8,
-    borderRadius: 20, backgroundColor: '#243260',
-    borderWidth: 1, borderColor: '#2d3e6e',
-  },
-  pillActive: { backgroundColor: '#F5A623', borderColor: '#F5A623' },
-  pillEmoji: { fontSize: 14 },
-  pillText: { fontSize: 13, fontWeight: '600', color: '#a0aec0' },
-  pillTextActive: { color: '#1A2744' },
+    categories: { paddingHorizontal: 16, gap: 8, paddingBottom: 4 },
+    pill: {
+      flexDirection: 'row', alignItems: 'center', gap: 6,
+      paddingHorizontal: 14, paddingVertical: 8,
+      borderRadius: 20, backgroundColor: t.cardAlt,
+      borderWidth: 1, borderColor: t.border,
+    },
+    pillActive: { backgroundColor: t.accent, borderColor: t.accent },
+    pillEmoji: { fontSize: 14 },
+    pillText: { fontSize: 13, fontWeight: '600', color: t.textSub },
+    pillTextActive: { color: t.accentText },
 
-  // List
-  loader: { flex: 1 },
-  list: { padding: 16, paddingTop: 8, paddingBottom: 32 },
-  resultsLabel: { fontSize: 13, color: '#6b7db3', marginBottom: 10, marginTop: 4 },
+    loader: { flex: 1 },
+    list: { padding: 16, paddingTop: 8, paddingBottom: 32 },
+    resultsLabel: { fontSize: 13, color: t.textMuted, marginBottom: 10, marginTop: 4 },
 
-  // Cards
-  card: {
-    backgroundColor: '#1A2744', borderRadius: 18, marginBottom: 16,
-    overflow: 'hidden',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3, shadowRadius: 10, elevation: 5,
-  },
-  cardImagePlaceholder: {
-    height: 110, backgroundColor: '#243260',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  cardEmoji: { fontSize: 44 },
-  statusBadge: {
-    position: 'absolute', top: 10, right: 10,
-    paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20,
-  },
-  statusBadgeText: { color: '#fff', fontSize: 11, fontWeight: '700' },
-  cardBody: { padding: 16 },
-  cardTop: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
-  cardName: { fontSize: 17, fontWeight: '700', color: '#fff', flex: 1 },
-  cardArrow: { fontSize: 22, color: '#F5A623', fontWeight: '300' },
-  cardAddress: { fontSize: 13, color: '#a0aec0', marginBottom: 12 },
-  cardMeta: { flexDirection: 'row', alignItems: 'center' },
-  cardMetaText: { fontSize: 12, color: '#6b7db3' },
-  cardMetaAmber: { fontSize: 12, color: '#F5A623' },
-  cardMetaDivider: { width: 1, height: 12, backgroundColor: '#2d3e6e', marginHorizontal: 10 },
+    card: {
+      backgroundColor: t.card, borderRadius: 18, marginBottom: 16,
+      overflow: 'hidden',
+      shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.08, shadowRadius: 10, elevation: 5,
+    },
+    cardImagePlaceholder: {
+      height: 110, backgroundColor: t.cardAlt,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    cardEmoji: { fontSize: 44 },
+    statusBadge: {
+      position: 'absolute', top: 10, right: 10,
+      paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20,
+    },
+    statusBadgeText: { color: '#fff', fontSize: 11, fontWeight: '700' },
+    cardBody: { padding: 16 },
+    cardTop: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
+    cardName: { fontSize: 17, fontWeight: '700', color: t.text, flex: 1 },
+    cardArrow: { fontSize: 22, color: t.accent, fontWeight: '300' },
+    cardAddress: { fontSize: 13, color: t.textSub, marginBottom: 12 },
+    cardMeta: { flexDirection: 'row', alignItems: 'center' },
+    cardMetaText: { fontSize: 12, color: t.textMuted },
+    cardMetaAmber: { fontSize: 12, color: t.accent },
+    cardMetaDivider: { width: 1, height: 12, backgroundColor: t.border, marginHorizontal: 10 },
 
-  // Empty
-  empty: { alignItems: 'center', paddingTop: 60 },
-  emptyIcon: { fontSize: 48, marginBottom: 16 },
-  emptyText: { color: '#fff', fontSize: 18, fontWeight: '600', marginBottom: 8 },
-  emptySubtext: { color: '#6b7db3', fontSize: 14, marginBottom: 20, textAlign: 'center' },
-  resetBtn: {
-    backgroundColor: '#F5A623', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 20,
-  },
-  resetBtnText: { color: '#1A2744', fontSize: 14, fontWeight: '800' },
-});
+    empty: { alignItems: 'center', paddingTop: 60 },
+    emptyIcon: { fontSize: 48, marginBottom: 16 },
+    emptyText: { color: t.text, fontSize: 18, fontWeight: '600', marginBottom: 8 },
+    emptySubtext: { color: t.textMuted, fontSize: 14, marginBottom: 20, textAlign: 'center' },
+    resetBtn: { backgroundColor: t.accent, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 20 },
+    resetBtnText: { color: t.accentText, fontSize: 14, fontWeight: '800' },
+  });
+}

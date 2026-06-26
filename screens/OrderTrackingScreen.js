@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   View, Text, FlatList, StyleSheet, TouchableOpacity,
   ActivityIndicator, RefreshControl, Alert
 } from 'react-native';
 import API from '../services/api';
+import { useTheme } from '../context/ThemeContext';
 
 const getStatusColor = (status) => {
   switch (status) {
@@ -32,10 +33,9 @@ const getStatusEmoji = (status) => {
 };
 
 const STATUS_STEPS = ['pending', 'accepted', 'preparing', 'ready', 'out_for_delivery', 'delivered'];
-
 const ACTIVE_STATUSES = ['accepted', 'preparing', 'ready', 'out_for_delivery'];
 
-function StarRating({ rating }) {
+function StarRating({ rating, styles }) {
   const full = Math.floor(rating);
   const half = rating % 1 >= 0.5;
   return (
@@ -50,7 +50,7 @@ function StarRating({ rating }) {
   );
 }
 
-function ETATimer({ startMinutes = 30 }) {
+function ETATimer({ startMinutes = 30, styles }) {
   const [minutes, setMinutes] = useState(startMinutes);
   const intervalRef = useRef(null);
 
@@ -74,7 +74,7 @@ function ETATimer({ startMinutes = 30 }) {
   );
 }
 
-function RiderCard({ rider }) {
+function RiderCard({ rider, styles }) {
   const name = rider?.name || 'Your Rider';
   const initial = name.charAt(0).toUpperCase();
   return (
@@ -89,9 +89,9 @@ function RiderCard({ rider }) {
         <View style={styles.riderInfo}>
           <Text style={styles.riderLabel}>Your rider</Text>
           <Text style={styles.riderName}>{name}</Text>
-          {rider?.rating != null && <StarRating rating={rider.rating} />}
+          {rider?.rating != null && <StarRating rating={rider.rating} styles={styles} />}
         </View>
-        <ETATimer />
+        <ETATimer styles={styles} />
       </View>
       <View style={styles.riderDivider} />
       <View style={styles.riderActions}>
@@ -116,13 +116,14 @@ function RiderCard({ rider }) {
 }
 
 export default function OrderTrackingScreen() {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    fetchOrders();
-  }, []);
+  useEffect(() => { fetchOrders(); }, []);
 
   const fetchOrders = async () => {
     try {
@@ -158,7 +159,6 @@ export default function OrderTrackingScreen() {
 
   const renderOrder = ({ item }) => (
     <View style={styles.card}>
-      {/* Card header */}
       <View style={styles.cardHeader}>
         <View>
           <Text style={styles.orderId}>Order #{item.id}</Text>
@@ -170,15 +170,12 @@ export default function OrderTrackingScreen() {
         </View>
       </View>
 
-      {/* Progress bar */}
       {renderProgressBar(item.status)}
 
-      {/* Rider card — shown for active orders */}
       {ACTIVE_STATUSES.includes(item.status) && (
-        <RiderCard rider={item.assignedRider} />
+        <RiderCard rider={item.assignedRider} styles={styles} />
       )}
 
-      {/* Items */}
       <View style={styles.itemsSection}>
         {item.orderItems?.map((orderItem, index) => (
           <View key={orderItem.id} style={[styles.itemRow, index === item.orderItems.length - 1 && styles.itemRowLast]}>
@@ -190,11 +187,8 @@ export default function OrderTrackingScreen() {
         ))}
       </View>
 
-      {/* Footer */}
       <View style={styles.cardFooter}>
-        <Text style={styles.date}>
-          🗓 {new Date(item.createdAt).toLocaleDateString()}
-        </Text>
+        <Text style={styles.date}>🗓 {new Date(item.createdAt).toLocaleDateString()}</Text>
         <Text style={styles.total}>€{item.total?.toFixed(2)}</Text>
       </View>
     </View>
@@ -208,7 +202,7 @@ export default function OrderTrackingScreen() {
       </View>
 
       {loading ? (
-        <ActivityIndicator size="large" color="#F5A623" style={styles.loader} />
+        <ActivityIndicator size="large" color={theme.accent} style={styles.loader} />
       ) : (
         <FlatList
           data={orders}
@@ -219,7 +213,7 @@ export default function OrderTrackingScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={() => { setRefreshing(true); fetchOrders(); }}
-              tintColor="#F5A623"
+              tintColor={theme.accent}
             />
           }
           ListHeaderComponent={
@@ -240,128 +234,91 @@ export default function OrderTrackingScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0f1a33' },
+function createStyles(t) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: t.bg },
 
-  // Header
-  header: {
-    backgroundColor: '#1A2744', paddingHorizontal: 20,
-    paddingTop: 54, paddingBottom: 24,
-  },
-  headerTitle: { fontSize: 28, fontWeight: '800', color: '#F5A623', marginBottom: 4 },
-  headerSubtitle: { fontSize: 15, color: 'rgba(255,255,255,0.6)' },
+    header: { backgroundColor: t.card, paddingHorizontal: 20, paddingTop: 54, paddingBottom: 24 },
+    headerTitle: { fontSize: 28, fontWeight: '800', color: t.accent, marginBottom: 4 },
+    headerSubtitle: { fontSize: 15, color: t.textFaint2 },
 
-  loader: { flex: 1 },
+    loader: { flex: 1 },
+    list: { padding: 16, paddingTop: 8 },
+    listLabel: { fontSize: 13, color: t.textMuted, marginBottom: 12, marginTop: 4 },
 
-  // List
-  list: { padding: 16, paddingTop: 8 },
-  listLabel: { fontSize: 13, color: '#6b7db3', marginBottom: 12, marginTop: 4 },
+    card: {
+      backgroundColor: t.card, borderRadius: 20, padding: 20, marginBottom: 16,
+      shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.08, shadowRadius: 10, elevation: 5,
+    },
+    cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 },
+    orderId: { fontSize: 16, fontWeight: '800', color: t.text, marginBottom: 3 },
+    restaurantName: { fontSize: 13, color: t.textSub },
+    statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20 },
+    statusEmoji: { fontSize: 13 },
+    statusText: { color: '#fff', fontSize: 12, fontWeight: '700', textTransform: 'capitalize' },
 
-  // Cards
-  card: {
-    backgroundColor: '#1A2744', borderRadius: 20, padding: 20,
-    marginBottom: 16,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3, shadowRadius: 10, elevation: 5,
-  },
-  cardHeader: {
-    flexDirection: 'row', justifyContent: 'space-between',
-    alignItems: 'flex-start', marginBottom: 16,
-  },
-  orderId: { fontSize: 16, fontWeight: '800', color: '#fff', marginBottom: 3 },
-  restaurantName: { fontSize: 13, color: '#a0aec0' },
-  statusBadge: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20,
-  },
-  statusEmoji: { fontSize: 13 },
-  statusText: { color: '#fff', fontSize: 12, fontWeight: '700', textTransform: 'capitalize' },
+    progressRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
+    progressStepWrapper: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+    progressDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: t.border },
+    progressDotActive: { backgroundColor: t.accent },
+    progressDotCurrent: {
+      width: 14, height: 14, borderRadius: 7, backgroundColor: t.accent,
+      shadowColor: t.accent, shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.8, shadowRadius: 6, elevation: 4,
+    },
+    progressLine: { flex: 1, height: 2, backgroundColor: t.border },
+    progressLineActive: { backgroundColor: t.accent },
 
-  // Progress bar
-  progressRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
-  progressStepWrapper: { flexDirection: 'row', alignItems: 'center', flex: 1 },
-  progressDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#2d3e6e' },
-  progressDotActive: { backgroundColor: '#F5A623' },
-  progressDotCurrent: {
-    width: 14, height: 14, borderRadius: 7, backgroundColor: '#F5A623',
-    shadowColor: '#F5A623', shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8, shadowRadius: 6, elevation: 4,
-  },
-  progressLine: { flex: 1, height: 2, backgroundColor: '#2d3e6e' },
-  progressLineActive: { backgroundColor: '#F5A623' },
+    riderCard: { backgroundColor: t.bg, borderRadius: 16, marginBottom: 16, overflow: 'hidden' },
+    riderTop: { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12 },
+    riderAvatarWrapper: { position: 'relative' },
+    riderAvatar: {
+      width: 48, height: 48, borderRadius: 24,
+      backgroundColor: t.accent, alignItems: 'center', justifyContent: 'center',
+    },
+    riderAvatarText: { fontSize: 20, fontWeight: '800', color: t.accentText },
+    riderOnlineDot: {
+      position: 'absolute', bottom: 1, right: 1,
+      width: 12, height: 12, borderRadius: 6,
+      backgroundColor: t.good, borderWidth: 2, borderColor: t.bg,
+    },
+    riderInfo: { flex: 1 },
+    riderLabel: { fontSize: 11, color: t.textMuted, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 },
+    riderName: { fontSize: 15, fontWeight: '800', color: t.text, marginBottom: 4 },
+    starsRow: { flexDirection: 'row', alignItems: 'center', gap: 2, marginBottom: 2 },
+    star: { fontSize: 13, color: t.accent },
+    ratingValue: { fontSize: 12, color: t.textSub, marginLeft: 4 },
 
-  // Rider card
-  riderCard: {
-    backgroundColor: '#0f1a33', borderRadius: 16,
-    marginBottom: 16, overflow: 'hidden',
-  },
-  riderTop: {
-    flexDirection: 'row', alignItems: 'center',
-    padding: 14, gap: 12,
-  },
-  riderAvatarWrapper: { position: 'relative' },
-  riderAvatar: {
-    width: 48, height: 48, borderRadius: 24,
-    backgroundColor: '#F5A623',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  riderAvatarText: { fontSize: 20, fontWeight: '800', color: '#1A2744' },
-  riderOnlineDot: {
-    position: 'absolute', bottom: 1, right: 1,
-    width: 12, height: 12, borderRadius: 6,
-    backgroundColor: '#22c55e', borderWidth: 2, borderColor: '#0f1a33',
-  },
-  riderInfo: { flex: 1 },
-  riderLabel: { fontSize: 11, color: '#6b7db3', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 },
-  riderName: { fontSize: 15, fontWeight: '800', color: '#fff', marginBottom: 4 },
-  starsRow: { flexDirection: 'row', alignItems: 'center', gap: 2, marginBottom: 2 },
-  star: { fontSize: 13, color: '#F5A623' },
-  ratingValue: { fontSize: 12, color: '#a0aec0', marginLeft: 4 },
+    etaBox: { alignItems: 'center', minWidth: 80 },
+    etaLabel: { fontSize: 10, color: t.textMuted, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 },
+    etaTime: { fontSize: 22, fontWeight: '800', color: t.accent, fontVariant: ['tabular-nums'] },
+    etaSubLabel: { fontSize: 10, color: t.textMuted, marginTop: 2, textAlign: 'center' },
 
-  // ETA
-  etaBox: { alignItems: 'center', minWidth: 80 },
-  etaLabel: { fontSize: 10, color: '#6b7db3', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 },
-  etaTime: { fontSize: 22, fontWeight: '800', color: '#F5A623', fontVariant: ['tabular-nums'] },
-  etaSubLabel: { fontSize: 10, color: '#6b7db3', marginTop: 2, textAlign: 'center' },
+    riderDivider: { height: 1, backgroundColor: t.border, marginHorizontal: 14 },
+    riderActions: { flexDirection: 'row' },
+    riderActionBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14 },
+    riderActionDivider: { width: 1, backgroundColor: t.border, marginVertical: 10 },
+    riderActionIcon: { fontSize: 18 },
+    riderActionText: { fontSize: 14, fontWeight: '700', color: t.text },
 
-  riderDivider: { height: 1, backgroundColor: '#1e2d50', marginHorizontal: 14 },
-  riderActions: { flexDirection: 'row' },
-  riderActionBtn: {
-    flex: 1, flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'center', gap: 8, paddingVertical: 14,
-  },
-  riderActionDivider: { width: 1, backgroundColor: '#1e2d50', marginVertical: 10 },
-  riderActionIcon: { fontSize: 18 },
-  riderActionText: { fontSize: 14, fontWeight: '700', color: '#fff' },
+    itemsSection: { backgroundColor: t.bg, borderRadius: 12, paddingHorizontal: 14, marginBottom: 16 },
+    itemRow: {
+      flexDirection: 'row', alignItems: 'center', gap: 10,
+      paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: t.borderDark,
+    },
+    itemRowLast: { borderBottomWidth: 0 },
+    itemQtyBadge: { width: 22, height: 22, borderRadius: 11, backgroundColor: t.cardAlt, alignItems: 'center', justifyContent: 'center' },
+    itemQtyText: { fontSize: 11, fontWeight: '700', color: t.accent },
+    itemText: { flex: 1, fontSize: 13, color: t.textSub },
 
-  // Items
-  itemsSection: {
-    backgroundColor: '#0f1a33', borderRadius: 12,
-    paddingHorizontal: 14, marginBottom: 16,
-  },
-  itemRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#1e2d50',
-  },
-  itemRowLast: { borderBottomWidth: 0 },
-  itemQtyBadge: {
-    width: 22, height: 22, borderRadius: 11,
-    backgroundColor: '#243260', alignItems: 'center', justifyContent: 'center',
-  },
-  itemQtyText: { fontSize: 11, fontWeight: '700', color: '#F5A623' },
-  itemText: { flex: 1, fontSize: 13, color: '#a0aec0' },
+    cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, borderTopColor: t.border, paddingTop: 14 },
+    date: { fontSize: 13, color: t.textMuted },
+    total: { fontSize: 17, fontWeight: '800', color: t.accent },
 
-  // Footer
-  cardFooter: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    borderTopWidth: 1, borderTopColor: '#2d3e6e', paddingTop: 14,
-  },
-  date: { fontSize: 13, color: '#6b7db3' },
-  total: { fontSize: 17, fontWeight: '800', color: '#F5A623' },
-
-  // Empty
-  empty: { alignItems: 'center', paddingTop: 80 },
-  emptyIcon: { fontSize: 56, marginBottom: 16 },
-  emptyText: { fontSize: 20, fontWeight: '700', color: '#fff', marginBottom: 8 },
-  emptySubtext: { fontSize: 14, color: '#6b7db3' },
-});
+    empty: { alignItems: 'center', paddingTop: 80 },
+    emptyIcon: { fontSize: 56, marginBottom: 16 },
+    emptyText: { fontSize: 20, fontWeight: '700', color: t.text, marginBottom: 8 },
+    emptySubtext: { fontSize: 14, color: t.textMuted },
+  });
+}

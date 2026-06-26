@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Text, View, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { ThemeProvider, useTheme } from './context/ThemeContext';
 import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
 import HomeScreen from './screens/HomeScreen';
@@ -17,69 +18,71 @@ import NotificationsScreen from './screens/NotificationsScreen';
 import SearchScreen from './screens/SearchScreen';
 
 function CartTabScreen({ navigation }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createCartStyles(theme), [theme]);
   return (
-    <View style={tabStyles.container}>
-      <View style={tabStyles.header}>
-        <Text style={tabStyles.headerTitle}>Your Cart</Text>
-        <Text style={tabStyles.headerSubtitle}>Items you've added</Text>
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Your Cart</Text>
+        <Text style={styles.headerSubtitle}>Items you've added</Text>
       </View>
-      <View style={tabStyles.empty}>
-        <Text style={tabStyles.emptyIcon}>🛒</Text>
-        <Text style={tabStyles.emptyText}>Your cart is empty</Text>
-        <Text style={tabStyles.emptySubtext}>Add items from a restaurant to get started</Text>
+      <View style={styles.empty}>
+        <Text style={styles.emptyIcon}>🛒</Text>
+        <Text style={styles.emptyText}>Your cart is empty</Text>
+        <Text style={styles.emptySubtext}>Add items from a restaurant to get started</Text>
         <TouchableOpacity
-          style={tabStyles.browseBtn}
+          style={styles.browseBtn}
           onPress={() => navigation.navigate('Home')}
         >
-          <Text style={tabStyles.browseBtnText}>Browse Restaurants</Text>
+          <Text style={styles.browseBtnText}>Browse Restaurants</Text>
         </TouchableOpacity>
       </View>
     </View>
   );
 }
 
-const tabStyles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0f1a33' },
-  header: {
-    backgroundColor: '#1A2744', paddingHorizontal: 20,
-    paddingTop: 54, paddingBottom: 24,
-  },
-  headerTitle: { fontSize: 28, fontWeight: '800', color: '#F5A623', marginBottom: 4 },
-  headerSubtitle: { fontSize: 15, color: 'rgba(255,255,255,0.6)' },
-  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: 60 },
-  emptyIcon: { fontSize: 72, marginBottom: 20 },
-  emptyText: { fontSize: 22, fontWeight: '700', color: '#fff', marginBottom: 8 },
-  emptySubtext: { fontSize: 14, color: '#6b7db3', marginBottom: 28, textAlign: 'center', paddingHorizontal: 40 },
-  browseBtn: {
-    backgroundColor: '#F5A623', paddingHorizontal: 28, paddingVertical: 14,
-    borderRadius: 20,
-    shadowColor: '#F5A623', shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4, shadowRadius: 10, elevation: 6,
-  },
-  browseBtnText: { color: '#1A2744', fontSize: 15, fontWeight: '800' },
-});
+function createCartStyles(t) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: t.bg },
+    header: {
+      backgroundColor: t.card, paddingHorizontal: 20,
+      paddingTop: 54, paddingBottom: 24,
+    },
+    headerTitle: { fontSize: 28, fontWeight: '800', color: t.accent, marginBottom: 4 },
+    headerSubtitle: { fontSize: 15, color: t.textFaint2 },
+    empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: 60 },
+    emptyIcon: { fontSize: 72, marginBottom: 20 },
+    emptyText: { fontSize: 22, fontWeight: '700', color: t.text, marginBottom: 8 },
+    emptySubtext: { fontSize: 14, color: t.textMuted, marginBottom: 28, textAlign: 'center', paddingHorizontal: 40 },
+    browseBtn: {
+      backgroundColor: t.accent, paddingHorizontal: 28, paddingVertical: 14,
+      borderRadius: 20,
+      shadowColor: t.accent, shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.4, shadowRadius: 10, elevation: 6,
+    },
+    browseBtnText: { color: t.accentText, fontSize: 15, fontWeight: '800' },
+  });
+}
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
 function MainTabs() {
+  const { theme } = useTheme();
   return (
     <Tab.Navigator
       screenOptions={{
-        tabBarActiveTintColor: '#F5A623',
-        tabBarInactiveTintColor: '#7a9cc4',
+        tabBarActiveTintColor: theme.accent,
+        tabBarInactiveTintColor: theme.tabInactive,
         tabBarStyle: {
-          backgroundColor: '#1e2d50',
+          backgroundColor: theme.tabBar,
           borderTopWidth: 1,
-          borderTopColor: '#2a3f6e',
+          borderTopColor: theme.tabBorder,
           paddingBottom: 8,
           paddingTop: 8,
           height: 60,
         },
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: '600',
-        },
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
         headerShown: false,
       }}
     >
@@ -92,14 +95,12 @@ function MainTabs() {
   );
 }
 
-export default function App() {
+function AppContent() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [authReady, setAuthReady] = useState(false);
   const [splashDone, setSplashDone] = useState(false);
 
-  useEffect(() => {
-    checkLogin();
-  }, []);
+  useEffect(() => { checkLogin(); }, []);
 
   const checkLogin = async () => {
     try {
@@ -113,11 +114,8 @@ export default function App() {
 
   const handleAuthSuccess = () => setIsLoggedIn(true);
 
-  // Show splash until both auth check and splash animation are done
   if (!splashDone || !authReady) {
-    return (
-      <SplashScreen onReady={() => setSplashDone(true)} />
-    );
+    return <SplashScreen onReady={() => setSplashDone(true)} />;
   }
 
   return (
@@ -140,5 +138,13 @@ export default function App() {
         )}
       </Stack.Navigator>
     </NavigationContainer>
+  );
+}
+
+export default function App() {
+  return (
+    <ThemeProvider>
+      <AppContent />
+    </ThemeProvider>
   );
 }

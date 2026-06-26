@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet
 } from 'react-native';
+import { useTheme } from '../context/ThemeContext';
 
 const INITIAL_NOTIFICATIONS = [
   {
@@ -67,6 +68,9 @@ const TYPE_COLORS = {
 };
 
 export default function NotificationsScreen() {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const [notifications, setNotifications] = useState(INITIAL_NOTIFICATIONS);
 
   const unreadCount = notifications.filter(n => !n.read).length;
@@ -139,54 +143,56 @@ export default function NotificationsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0f1a33' },
+function createStyles(t) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: t.bg },
 
-  header: {
-    backgroundColor: '#1A2744', paddingHorizontal: 20,
-    paddingTop: 54, paddingBottom: 24,
-  },
-  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
-  headerTitle: { fontSize: 28, fontWeight: '800', color: '#F5A623', marginBottom: 4 },
-  headerSubtitle: { fontSize: 15, color: 'rgba(255,255,255,0.6)' },
-  markAllBtn: {
-    backgroundColor: '#243260', paddingHorizontal: 14, paddingVertical: 8,
-    borderRadius: 20, borderWidth: 1, borderColor: '#2d3e6e',
-  },
-  markAllText: { fontSize: 12, fontWeight: '700', color: '#F5A623' },
+    header: {
+      backgroundColor: t.card, paddingHorizontal: 20,
+      paddingTop: 54, paddingBottom: 24,
+    },
+    headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
+    headerTitle: { fontSize: 28, fontWeight: '800', color: t.accent, marginBottom: 4 },
+    headerSubtitle: { fontSize: 15, color: t.textFaint2 },
+    markAllBtn: {
+      backgroundColor: t.cardAlt, paddingHorizontal: 14, paddingVertical: 8,
+      borderRadius: 20, borderWidth: 1, borderColor: t.border,
+    },
+    markAllText: { fontSize: 12, fontWeight: '700', color: t.accent },
 
-  list: { paddingVertical: 8 },
+    list: { paddingVertical: 8 },
 
-  item: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: 14,
-    paddingHorizontal: 20, paddingVertical: 16,
-    backgroundColor: '#0f1a33',
-  },
-  itemUnread: { backgroundColor: '#111e38' },
+    item: {
+      flexDirection: 'row', alignItems: 'flex-start', gap: 14,
+      paddingHorizontal: 20, paddingVertical: 16,
+      backgroundColor: t.bg,
+    },
+    itemUnread: { backgroundColor: t.unreadBg },
 
-  iconBox: {
-    width: 46, height: 46, borderRadius: 14,
-    alignItems: 'center', justifyContent: 'center',
-    position: 'relative', flexShrink: 0,
-  },
-  iconText: { fontSize: 22 },
-  unreadDot: {
-    position: 'absolute', top: -2, right: -2,
-    width: 10, height: 10, borderRadius: 5,
-    backgroundColor: '#F5A623', borderWidth: 2, borderColor: '#0f1a33',
-  },
+    iconBox: {
+      width: 46, height: 46, borderRadius: 14,
+      alignItems: 'center', justifyContent: 'center',
+      position: 'relative', flexShrink: 0,
+    },
+    iconText: { fontSize: 22 },
+    unreadDot: {
+      position: 'absolute', top: -2, right: -2,
+      width: 10, height: 10, borderRadius: 5,
+      backgroundColor: t.accent, borderWidth: 2, borderColor: t.bg,
+    },
 
-  textBlock: { flex: 1 },
-  titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
-  title: { fontSize: 14, fontWeight: '600', color: '#a0aec0', flex: 1, marginRight: 8 },
-  titleUnread: { color: '#fff', fontWeight: '700' },
-  time: { fontSize: 11, color: '#4a5d80', flexShrink: 0 },
-  body: { fontSize: 13, color: '#6b7db3', lineHeight: 19 },
+    textBlock: { flex: 1 },
+    titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
+    title: { fontSize: 14, fontWeight: '600', color: t.textSub, flex: 1, marginRight: 8 },
+    titleUnread: { color: t.text, fontWeight: '700' },
+    time: { fontSize: 11, color: t.textDim, flexShrink: 0 },
+    body: { fontSize: 13, color: t.textMuted, lineHeight: 19 },
 
-  separator: { height: 1, backgroundColor: '#1e2d50', marginHorizontal: 20 },
+    separator: { height: 1, backgroundColor: t.borderDark, marginHorizontal: 20 },
 
-  empty: { alignItems: 'center', paddingTop: 80 },
-  emptyIcon: { fontSize: 56, marginBottom: 16 },
-  emptyText: { fontSize: 20, fontWeight: '700', color: '#fff', marginBottom: 8 },
-  emptySubtext: { fontSize: 14, color: '#6b7db3' },
-});
+    empty: { alignItems: 'center', paddingTop: 80 },
+    emptyIcon: { fontSize: 56, marginBottom: 16 },
+    emptyText: { fontSize: 20, fontWeight: '700', color: t.text, marginBottom: 8 },
+    emptySubtext: { fontSize: 14, color: t.textMuted },
+  });
+}

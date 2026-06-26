@@ -1,10 +1,11 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
   StyleSheet, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import API from '../services/api';
+import { useTheme } from '../context/ThemeContext';
 
 const PASSWORD_RULES = [
   { label: 'At least 8 characters', test: v => v.length >= 8 },
@@ -12,7 +13,7 @@ const PASSWORD_RULES = [
   { label: 'One number',            test: v => /[0-9]/.test(v) },
 ];
 
-function PasswordStrength({ password }) {
+function PasswordStrength({ password, styles }) {
   if (!password) return null;
   const passed = PASSWORD_RULES.filter(r => r.test(password)).length;
   const colors = ['#ef4444', '#ff9800', '#F5A623', '#22c55e'];
@@ -21,10 +22,7 @@ function PasswordStrength({ password }) {
     <View style={styles.strengthBox}>
       <View style={styles.strengthBars}>
         {[0, 1, 2, 3].map(i => (
-          <View
-            key={i}
-            style={[styles.strengthBar, i < passed && { backgroundColor: colors[passed - 1] }]}
-          />
+          <View key={i} style={[styles.strengthBar, i < passed && { backgroundColor: colors[passed - 1] }]} />
         ))}
       </View>
       <Text style={[styles.strengthLabel, { color: colors[passed - 1] || '#6b7db3' }]}>
@@ -35,6 +33,9 @@ function PasswordStrength({ password }) {
 }
 
 export default function RegisterScreen({ navigation }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -52,19 +53,15 @@ export default function RegisterScreen({ navigation }) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
     }
-
     setLoading(true);
     try {
       const response = await API.post('/auth/register', {
         name, email, password, phone, role: 'customer'
       });
-
       const loginResponse = await API.post('/auth/login', { email, password });
       const { token, user } = loginResponse.data;
-
       await AsyncStorage.setItem('token', token);
       await AsyncStorage.setItem('user', JSON.stringify(user));
-
       navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
     } catch (err) {
       Alert.alert('Error', 'Registration failed. Email may already exist.');
@@ -102,7 +99,7 @@ export default function RegisterScreen({ navigation }) {
             <TextInput
               style={styles.input}
               placeholder="Full name"
-              placeholderTextColor="#6b7db3"
+              placeholderTextColor={theme.textMuted}
               value={name}
               onChangeText={setName}
               returnKeyType="next"
@@ -119,7 +116,7 @@ export default function RegisterScreen({ navigation }) {
               ref={emailRef}
               style={styles.input}
               placeholder="Email address"
-              placeholderTextColor="#6b7db3"
+              placeholderTextColor={theme.textMuted}
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
@@ -138,7 +135,7 @@ export default function RegisterScreen({ navigation }) {
               ref={phoneRef}
               style={styles.input}
               placeholder="Phone number"
-              placeholderTextColor="#6b7db3"
+              placeholderTextColor={theme.textMuted}
               value={phone}
               onChangeText={setPhone}
               keyboardType="phone-pad"
@@ -156,7 +153,7 @@ export default function RegisterScreen({ navigation }) {
               ref={passwordRef}
               style={styles.input}
               placeholder="Password"
-              placeholderTextColor="#6b7db3"
+              placeholderTextColor={theme.textMuted}
               value={password}
               onChangeText={setPassword}
               secureTextEntry={!showPassword}
@@ -165,37 +162,27 @@ export default function RegisterScreen({ navigation }) {
               onFocus={() => focus('password')}
               onBlur={blur}
             />
-            <TouchableOpacity
-              onPress={() => setShowPassword(prev => !prev)}
-              style={styles.eyeButton}
-            >
+            <TouchableOpacity onPress={() => setShowPassword(prev => !prev)} style={styles.eyeButton}>
               <Text style={styles.eyeIcon}>{showPassword ? '🙈' : '👁️'}</Text>
             </TouchableOpacity>
           </View>
 
-          {/* Password strength */}
-          <PasswordStrength password={password} />
+          <PasswordStrength password={password} styles={styles} />
 
-          {/* Rules checklist */}
           {password.length > 0 && (
             <View style={styles.rulesBox}>
               {PASSWORD_RULES.map(rule => {
                 const ok = rule.test(password);
                 return (
                   <View key={rule.label} style={styles.ruleRow}>
-                    <Text style={[styles.ruleIcon, ok && styles.ruleIconOk]}>
-                      {ok ? '✓' : '○'}
-                    </Text>
-                    <Text style={[styles.ruleText, ok && styles.ruleTextOk]}>
-                      {rule.label}
-                    </Text>
+                    <Text style={[styles.ruleIcon, ok && styles.ruleIconOk]}>{ok ? '✓' : '○'}</Text>
+                    <Text style={[styles.ruleText, ok && styles.ruleTextOk]}>{rule.label}</Text>
                   </View>
                 );
               })}
             </View>
           )}
 
-          {/* Create Account button */}
           <TouchableOpacity
             style={[styles.button, loading && styles.buttonLoading]}
             onPress={handleRegister}
@@ -203,7 +190,7 @@ export default function RegisterScreen({ navigation }) {
           >
             {loading ? (
               <View style={styles.buttonInner}>
-                <ActivityIndicator color="#1A2744" size="small" />
+                <ActivityIndicator color={theme.accentText} size="small" />
                 <Text style={styles.buttonText}>Creating account...</Text>
               </View>
             ) : (
@@ -211,10 +198,7 @@ export default function RegisterScreen({ navigation }) {
             )}
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.loginLink}
-            onPress={() => navigation.navigate('Login')}
-          >
+          <TouchableOpacity style={styles.loginLink} onPress={() => navigation.navigate('Login')}>
             <Text style={styles.footerText}>
               Already have an account?{'  '}
               <Text style={styles.footerHighlight}>Sign In</Text>
@@ -227,83 +211,72 @@ export default function RegisterScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0f1a33' },
-  scrollContent: { flexGrow: 1, justifyContent: 'center', padding: 24 },
+function createStyles(t) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: t.bg },
+    scrollContent: { flexGrow: 1, justifyContent: 'center', padding: 24 },
 
-  // Hero
-  hero: { alignItems: 'center', marginBottom: 32 },
-  logoBox: {
-    width: 80, height: 80, borderRadius: 24,
-    backgroundColor: '#F5A623',
-    alignItems: 'center', justifyContent: 'center',
-    marginBottom: 14,
-    shadowColor: '#F5A623', shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4, shadowRadius: 14, elevation: 8,
-  },
-  logoEmoji: { fontSize: 40 },
-  appName: { fontSize: 32, fontWeight: '800', color: '#fff', marginBottom: 6 },
-  tagline: { fontSize: 15, color: '#6b7db3' },
+    hero: { alignItems: 'center', marginBottom: 32 },
+    logoBox: {
+      width: 80, height: 80, borderRadius: 24,
+      backgroundColor: t.accent,
+      alignItems: 'center', justifyContent: 'center',
+      marginBottom: 14,
+      shadowColor: t.accent, shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.4, shadowRadius: 14, elevation: 8,
+    },
+    logoEmoji: { fontSize: 40 },
+    appName: { fontSize: 32, fontWeight: '800', color: t.text, marginBottom: 6 },
+    tagline: { fontSize: 15, color: t.textMuted },
 
-  // Card
-  card: {
-    backgroundColor: '#1A2744', borderRadius: 24, padding: 24,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3, shadowRadius: 16, elevation: 8,
-  },
-  cardTitle: { fontSize: 22, fontWeight: '800', color: '#fff', marginBottom: 4 },
-  cardSubtitle: { fontSize: 14, color: '#6b7db3', marginBottom: 24 },
+    card: {
+      backgroundColor: t.card, borderRadius: 24, padding: 24,
+      shadowColor: '#000', shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.12, shadowRadius: 16, elevation: 8,
+    },
+    cardTitle: { fontSize: 22, fontWeight: '800', color: t.text, marginBottom: 4 },
+    cardSubtitle: { fontSize: 14, color: t.textMuted, marginBottom: 24 },
 
-  // Inputs
-  inputWrapper: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#243260', borderRadius: 14,
-    borderWidth: 1, borderColor: '#2d3e6e',
-    paddingHorizontal: 14, marginBottom: 14,
-  },
-  inputWrapperFocused: {
-    borderColor: '#F5A623',
-    shadowColor: '#F5A623', shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.2, shadowRadius: 6, elevation: 2,
-  },
-  inputIcon: { fontSize: 16, marginRight: 10 },
-  input: { flex: 1, paddingVertical: 14, fontSize: 15, color: '#fff' },
-  eyeButton: { padding: 4 },
-  eyeIcon: { fontSize: 18 },
+    inputWrapper: {
+      flexDirection: 'row', alignItems: 'center',
+      backgroundColor: t.inputBg, borderRadius: 14,
+      borderWidth: 1, borderColor: t.inputBorder,
+      paddingHorizontal: 14, marginBottom: 14,
+    },
+    inputWrapperFocused: {
+      borderColor: t.accent,
+      shadowColor: t.accent, shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.2, shadowRadius: 6, elevation: 2,
+    },
+    inputIcon: { fontSize: 16, marginRight: 10 },
+    input: { flex: 1, paddingVertical: 14, fontSize: 15, color: t.text },
+    eyeButton: { padding: 4 },
+    eyeIcon: { fontSize: 18 },
 
-  // Password strength
-  strengthBox: {
-    flexDirection: 'row', alignItems: 'center',
-    gap: 10, marginBottom: 10, marginTop: -4,
-  },
-  strengthBars: { flexDirection: 'row', gap: 4, flex: 1 },
-  strengthBar: {
-    flex: 1, height: 4, borderRadius: 2,
-    backgroundColor: '#2d3e6e',
-  },
-  strengthLabel: { fontSize: 12, fontWeight: '700', minWidth: 50, textAlign: 'right' },
+    strengthBox: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10, marginTop: -4 },
+    strengthBars: { flexDirection: 'row', gap: 4, flex: 1 },
+    strengthBar: { flex: 1, height: 4, borderRadius: 2, backgroundColor: t.border },
+    strengthLabel: { fontSize: 12, fontWeight: '700', minWidth: 50, textAlign: 'right' },
 
-  // Password rules
-  rulesBox: { marginBottom: 18, gap: 6 },
-  ruleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  ruleIcon: { fontSize: 13, color: '#4a5d80', width: 16, textAlign: 'center' },
-  ruleIconOk: { color: '#22c55e' },
-  ruleText: { fontSize: 13, color: '#4a5d80' },
-  ruleTextOk: { color: '#a0aec0' },
+    rulesBox: { marginBottom: 18, gap: 6 },
+    ruleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    ruleIcon: { fontSize: 13, color: t.textDim, width: 16, textAlign: 'center' },
+    ruleIconOk: { color: t.good },
+    ruleText: { fontSize: 13, color: t.textDim },
+    ruleTextOk: { color: t.textSub },
 
-  // Button
-  button: {
-    backgroundColor: '#F5A623', borderRadius: 14, padding: 17,
-    alignItems: 'center', marginTop: 6,
-    shadowColor: '#F5A623', shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4, shadowRadius: 10, elevation: 6,
-  },
-  buttonLoading: { opacity: 0.85 },
-  buttonInner: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  buttonText: { color: '#1A2744', fontSize: 17, fontWeight: '800' },
+    button: {
+      backgroundColor: t.accent, borderRadius: 14, padding: 17,
+      alignItems: 'center', marginTop: 6,
+      shadowColor: t.accent, shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.4, shadowRadius: 10, elevation: 6,
+    },
+    buttonLoading: { opacity: 0.85 },
+    buttonInner: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    buttonText: { color: t.accentText, fontSize: 17, fontWeight: '800' },
 
-  // Footer
-  loginLink: { marginTop: 22, alignItems: 'center' },
-  footerText: { color: '#6b7db3', fontSize: 14 },
-  footerHighlight: { color: '#F5A623', fontWeight: '700' },
-});
+    loginLink: { marginTop: 22, alignItems: 'center' },
+    footerText: { color: t.textMuted, fontSize: 14 },
+    footerHighlight: { color: t.accent, fontWeight: '700' },
+  });
+}

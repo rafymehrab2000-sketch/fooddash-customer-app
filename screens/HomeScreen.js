@@ -1,26 +1,22 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity,
   StyleSheet, ActivityIndicator, RefreshControl, ScrollView, Animated
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import API from '../services/api';
+import { useTheme } from '../context/ThemeContext';
 
 const CATEGORIES = ['All', 'Burgers', 'Pizza', 'Sushi', 'Asian'];
 
 const CATEGORY_EMOJIS = {
-  All: '🍽️',
-  Burgers: '🍔',
-  Pizza: '🍕',
-  Sushi: '🍣',
-  Asian: '🥢',
+  All: '🍽️', Burgers: '🍔', Pizza: '🍕', Sushi: '🍣', Asian: '🥢',
 };
 
 const SORT_OPTIONS = ['Default', 'Open first', 'Most items'];
 
-function RestaurantCard({ item, onPress }) {
+function RestaurantCard({ item, onPress, styles }) {
   const scale = useRef(new Animated.Value(1)).current;
-
   const onPressIn = () => Animated.spring(scale, { toValue: 0.97, useNativeDriver: true, speed: 30 }).start();
   const onPressOut = () => Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 20 }).start();
 
@@ -40,17 +36,11 @@ function RestaurantCard({ item, onPress }) {
           </View>
           <Text style={styles.cardAddress} numberOfLines={1}>📍 {item.address}</Text>
           <View style={styles.cardMeta}>
-            <View style={styles.cardMetaItem}>
-              <Text style={styles.cardMetaText}>🍴 {item.menuItems?.length || 0} items</Text>
-            </View>
+            <Text style={styles.cardMetaText}>🍴 {item.menuItems?.length || 0} items</Text>
             <View style={styles.cardMetaDivider} />
-            <View style={styles.cardMetaItem}>
-              <Text style={styles.cardMetaText}>🕐 25–35 min</Text>
-            </View>
+            <Text style={styles.cardMetaText}>🕐 25–35 min</Text>
             <View style={styles.cardMetaDivider} />
-            <View style={styles.cardMetaItem}>
-              <Text style={styles.cardMetaAmber}>€3.50 delivery</Text>
-            </View>
+            <Text style={styles.cardMetaAmber}>€3.50 delivery</Text>
           </View>
         </View>
       </TouchableOpacity>
@@ -59,6 +49,9 @@ function RestaurantCard({ item, onPress }) {
 }
 
 export default function HomeScreen({ navigation }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const [restaurants, setRestaurants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -113,7 +106,6 @@ export default function HomeScreen({ navigation }) {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        {/* Location selector */}
         <TouchableOpacity style={styles.locationRow} activeOpacity={0.7}>
           <Text style={styles.locationPin}>📍</Text>
           <Text style={styles.locationText}>Jyväskylä, Finland</Text>
@@ -122,19 +114,13 @@ export default function HomeScreen({ navigation }) {
 
         <View style={styles.headerTop}>
           <View>
-            <Text style={styles.headerGreeting}>
-              {greeting}{userName ? `, ${userName}` : ''} 👋
-            </Text>
+            <Text style={styles.headerGreeting}>{greeting}{userName ? `, ${userName}` : ''} 👋</Text>
             <Text style={styles.headerTitle}>What are you craving?</Text>
           </View>
         </View>
 
-        {/* Search (navigates to SearchScreen) */}
-        <TouchableOpacity
-          style={styles.searchContainer}
-          activeOpacity={0.8}
-          onPress={() => navigation.navigate('Search')}
-        >
+        {/* Search shortcut */}
+        <TouchableOpacity style={styles.searchContainer} activeOpacity={0.8} onPress={() => navigation.navigate('Search')}>
           <Text style={styles.searchIcon}>🔍</Text>
           <Text style={styles.searchPlaceholder}>Search restaurants...</Text>
         </TouchableOpacity>
@@ -190,7 +176,7 @@ export default function HomeScreen({ navigation }) {
       </View>
 
       {loading ? (
-        <ActivityIndicator size="large" color="#F5A623" style={styles.loader} />
+        <ActivityIndicator size="large" color={theme.accent} style={styles.loader} />
       ) : (
         <FlatList
           data={filtered}
@@ -198,6 +184,7 @@ export default function HomeScreen({ navigation }) {
           renderItem={({ item }) => (
             <RestaurantCard
               item={item}
+              styles={styles}
               onPress={() => navigation.navigate('Restaurant', { restaurant: item })}
             />
           )}
@@ -206,7 +193,7 @@ export default function HomeScreen({ navigation }) {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={() => { setRefreshing(true); fetchRestaurants(); }}
-              tintColor="#F5A623"
+              tintColor={theme.accent}
             />
           }
           ListHeaderComponent={
@@ -214,7 +201,6 @@ export default function HomeScreen({ navigation }) {
               <Text style={styles.sectionLabel}>
                 {filtered.length} restaurant{filtered.length !== 1 ? 's' : ''} near you
               </Text>
-              {/* Sort pills */}
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sortRow}>
                 {SORT_OPTIONS.map(opt => (
                   <TouchableOpacity
@@ -222,9 +208,7 @@ export default function HomeScreen({ navigation }) {
                     style={[styles.sortPill, activeSort === opt && styles.sortPillActive]}
                     onPress={() => setActiveSort(opt)}
                   >
-                    <Text style={[styles.sortPillText, activeSort === opt && styles.sortPillTextActive]}>
-                      {opt}
-                    </Text>
+                    <Text style={[styles.sortPillText, activeSort === opt && styles.sortPillTextActive]}>{opt}</Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
@@ -234,12 +218,9 @@ export default function HomeScreen({ navigation }) {
             <View style={styles.empty}>
               <Text style={styles.emptyIcon}>🍽️</Text>
               <Text style={styles.emptyText}>No restaurants found</Text>
-              <Text style={styles.emptySubtext}>Try a different search or category</Text>
+              <Text style={styles.emptySubtext}>Try a different category</Text>
               {activeCategory !== 'All' && (
-                <TouchableOpacity
-                  style={styles.resetBtn}
-                  onPress={() => setActiveCategory('All')}
-                >
+                <TouchableOpacity style={styles.resetBtn} onPress={() => setActiveCategory('All')}>
                   <Text style={styles.resetBtnText}>Clear filters</Text>
                 </TouchableOpacity>
               )}
@@ -251,130 +232,102 @@ export default function HomeScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0f1a33' },
+function createStyles(t) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: t.bg },
 
-  // Header
-  header: {
-    backgroundColor: '#1A2744', paddingHorizontal: 20,
-    paddingTop: 54, paddingBottom: 20,
-  },
-  locationRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    marginBottom: 14,
-  },
-  locationPin: { fontSize: 14 },
-  locationText: { fontSize: 14, fontWeight: '700', color: '#fff', flex: 1 },
-  locationArrow: { fontSize: 14, color: '#F5A623', fontWeight: '700' },
-  headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 },
-  headerGreeting: { fontSize: 13, color: 'rgba(255,255,255,0.5)', marginBottom: 4 },
-  headerTitle: { fontSize: 22, fontWeight: '800', color: '#fff' },
+    header: { backgroundColor: t.card, paddingHorizontal: 20, paddingTop: 54, paddingBottom: 20 },
+    locationRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 14 },
+    locationPin: { fontSize: 14 },
+    locationText: { fontSize: 14, fontWeight: '700', color: t.text, flex: 1 },
+    locationArrow: { fontSize: 14, color: t.accent, fontWeight: '700' },
+    headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 },
+    headerGreeting: { fontSize: 13, color: t.textFaint, marginBottom: 4 },
+    headerTitle: { fontSize: 22, fontWeight: '800', color: t.text },
+    searchContainer: {
+      flexDirection: 'row', alignItems: 'center',
+      backgroundColor: t.inputBg, borderRadius: 14,
+      borderWidth: 1, borderColor: t.inputBorder,
+      paddingHorizontal: 14, paddingVertical: 13,
+    },
+    searchIcon: { fontSize: 16, marginRight: 8 },
+    searchPlaceholder: { fontSize: 15, color: t.textMuted, flex: 1 },
 
-  // Featured
-  featuredSection: { backgroundColor: '#1A2744', paddingHorizontal: 20, paddingBottom: 16 },
-  featuredLabel: { fontSize: 12, fontWeight: '700', color: '#6b7db3', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 },
-  featuredCard: {
-    backgroundColor: '#243260', borderRadius: 18, overflow: 'hidden',
-    shadowColor: '#F5A623', shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15, shadowRadius: 10, elevation: 4,
-  },
-  featuredImageBox: {
-    height: 130, backgroundColor: '#1e2d50',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  featuredEmoji: { fontSize: 52 },
-  featuredBadge: {
-    position: 'absolute', top: 10, left: 10,
-    backgroundColor: '#F5A623', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20,
-  },
-  featuredBadgeText: { fontSize: 11, fontWeight: '800', color: '#1A2744' },
-  featuredStatusBadge: {
-    position: 'absolute', top: 10, right: 10,
-    paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20,
-  },
-  featuredStatusText: { fontSize: 11, fontWeight: '700', color: '#fff' },
-  featuredBody: { padding: 14 },
-  featuredName: { fontSize: 17, fontWeight: '800', color: '#fff', marginBottom: 4 },
-  featuredAddress: { fontSize: 13, color: '#a0aec0', marginBottom: 10 },
-  featuredMeta: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  featuredMetaText: { fontSize: 12, color: '#6b7db3' },
-  featuredMetaDot: { fontSize: 12, color: '#2d3e6e' },
-  featuredMetaAmber: { fontSize: 12, color: '#F5A623' },
-  searchContainer: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#243260', borderRadius: 14,
-    borderWidth: 1, borderColor: '#2d3e6e', paddingHorizontal: 14,
-    paddingVertical: 13,
-  },
-  searchIcon: { fontSize: 16, marginRight: 8 },
-  searchPlaceholder: { fontSize: 15, color: '#6b7db3', flex: 1 },
+    featuredSection: { backgroundColor: t.card, paddingHorizontal: 20, paddingBottom: 16 },
+    featuredLabel: { fontSize: 12, fontWeight: '700', color: t.textMuted, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 },
+    featuredCard: {
+      backgroundColor: t.cardAlt, borderRadius: 18, overflow: 'hidden',
+      shadowColor: t.accent, shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.15, shadowRadius: 10, elevation: 4,
+    },
+    featuredImageBox: { height: 130, backgroundColor: t.borderDark, alignItems: 'center', justifyContent: 'center' },
+    featuredEmoji: { fontSize: 52 },
+    featuredBadge: {
+      position: 'absolute', top: 10, left: 10,
+      backgroundColor: t.accent, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20,
+    },
+    featuredBadgeText: { fontSize: 11, fontWeight: '800', color: t.accentText },
+    featuredStatusBadge: { position: 'absolute', top: 10, right: 10, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
+    featuredStatusText: { fontSize: 11, fontWeight: '700', color: '#fff' },
+    featuredBody: { padding: 14 },
+    featuredName: { fontSize: 17, fontWeight: '800', color: t.text, marginBottom: 4 },
+    featuredAddress: { fontSize: 13, color: t.textSub, marginBottom: 10 },
+    featuredMeta: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    featuredMetaText: { fontSize: 12, color: t.textMuted },
+    featuredMetaDot: { fontSize: 12, color: t.border },
+    featuredMetaAmber: { fontSize: 12, color: t.accent },
 
-  // Category pills
-  categoriesWrapper: { backgroundColor: '#1A2744', paddingBottom: 16 },
-  categories: { paddingHorizontal: 20, gap: 8 },
-  pill: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    paddingHorizontal: 14, paddingVertical: 8,
-    borderRadius: 20, backgroundColor: '#243260',
-    borderWidth: 1, borderColor: '#2d3e6e',
-  },
-  pillActive: { backgroundColor: '#F5A623', borderColor: '#F5A623' },
-  pillEmoji: { fontSize: 14 },
-  pillText: { fontSize: 13, fontWeight: '600', color: '#a0aec0' },
-  pillTextActive: { color: '#1A2744' },
+    categoriesWrapper: { backgroundColor: t.card, paddingBottom: 16 },
+    categories: { paddingHorizontal: 20, gap: 8 },
+    pill: {
+      flexDirection: 'row', alignItems: 'center', gap: 6,
+      paddingHorizontal: 14, paddingVertical: 8,
+      borderRadius: 20, backgroundColor: t.cardAlt,
+      borderWidth: 1, borderColor: t.border,
+    },
+    pillActive: { backgroundColor: t.accent, borderColor: t.accent },
+    pillEmoji: { fontSize: 14 },
+    pillText: { fontSize: 13, fontWeight: '600', color: t.textSub },
+    pillTextActive: { color: t.accentText },
 
-  // List
-  loader: { flex: 1 },
-  list: { padding: 16, paddingTop: 8 },
-  listHeader: { marginBottom: 4 },
-  sectionLabel: { fontSize: 13, color: '#6b7db3', marginBottom: 10, marginTop: 4 },
+    loader: { flex: 1 },
+    list: { padding: 16, paddingTop: 8 },
+    listHeader: { marginBottom: 4 },
+    sectionLabel: { fontSize: 13, color: t.textMuted, marginBottom: 10, marginTop: 4 },
 
-  // Sort pills
-  sortRow: { gap: 8, paddingBottom: 12 },
-  sortPill: {
-    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20,
-    backgroundColor: '#1A2744', borderWidth: 1, borderColor: '#2d3e6e',
-  },
-  sortPillActive: { borderColor: '#F5A623' },
-  sortPillText: { fontSize: 12, fontWeight: '600', color: '#6b7db3' },
-  sortPillTextActive: { color: '#F5A623' },
+    sortRow: { gap: 8, paddingBottom: 12 },
+    sortPill: {
+      paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20,
+      backgroundColor: t.card, borderWidth: 1, borderColor: t.border,
+    },
+    sortPillActive: { borderColor: t.accent },
+    sortPillText: { fontSize: 12, fontWeight: '600', color: t.textMuted },
+    sortPillTextActive: { color: t.accent },
 
-  // Cards
-  card: {
-    backgroundColor: '#1A2744', borderRadius: 18, marginBottom: 16,
-    overflow: 'hidden',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3, shadowRadius: 10, elevation: 5,
-  },
-  cardImagePlaceholder: {
-    height: 110, backgroundColor: '#243260',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  cardEmoji: { fontSize: 44 },
-  statusBadge: {
-    position: 'absolute', top: 10, right: 10,
-    paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20,
-  },
-  statusBadgeText: { color: '#fff', fontSize: 11, fontWeight: '700' },
-  cardBody: { padding: 16 },
-  cardTop: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
-  cardName: { fontSize: 17, fontWeight: '700', color: '#fff', flex: 1 },
-  cardArrow: { fontSize: 22, color: '#F5A623', fontWeight: '300' },
-  cardAddress: { fontSize: 13, color: '#a0aec0', marginBottom: 12 },
-  cardMeta: { flexDirection: 'row', alignItems: 'center' },
-  cardMetaItem: { flexDirection: 'row', alignItems: 'center' },
-  cardMetaText: { fontSize: 12, color: '#6b7db3' },
-  cardMetaAmber: { fontSize: 12, color: '#F5A623' },
-  cardMetaDivider: { width: 1, height: 12, backgroundColor: '#2d3e6e', marginHorizontal: 10 },
+    card: {
+      backgroundColor: t.card, borderRadius: 18, marginBottom: 16, overflow: 'hidden',
+      shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.08, shadowRadius: 10, elevation: 5,
+    },
+    cardImagePlaceholder: { height: 110, backgroundColor: t.cardAlt, alignItems: 'center', justifyContent: 'center' },
+    cardEmoji: { fontSize: 44 },
+    statusBadge: { position: 'absolute', top: 10, right: 10, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
+    statusBadgeText: { color: '#fff', fontSize: 11, fontWeight: '700' },
+    cardBody: { padding: 16 },
+    cardTop: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
+    cardName: { fontSize: 17, fontWeight: '700', color: t.text, flex: 1 },
+    cardArrow: { fontSize: 22, color: t.accent, fontWeight: '300' },
+    cardAddress: { fontSize: 13, color: t.textSub, marginBottom: 12 },
+    cardMeta: { flexDirection: 'row', alignItems: 'center' },
+    cardMetaText: { fontSize: 12, color: t.textMuted },
+    cardMetaAmber: { fontSize: 12, color: t.accent },
+    cardMetaDivider: { width: 1, height: 12, backgroundColor: t.border, marginHorizontal: 10 },
 
-  // Empty
-  empty: { alignItems: 'center', paddingTop: 60 },
-  emptyIcon: { fontSize: 48, marginBottom: 16 },
-  emptyText: { color: '#fff', fontSize: 18, fontWeight: '600', marginBottom: 8 },
-  emptySubtext: { color: '#6b7db3', fontSize: 14, marginBottom: 20 },
-  resetBtn: {
-    backgroundColor: '#F5A623', paddingHorizontal: 24, paddingVertical: 12,
-    borderRadius: 20,
-  },
-  resetBtnText: { color: '#1A2744', fontSize: 14, fontWeight: '800' },
-});
+    empty: { alignItems: 'center', paddingTop: 60 },
+    emptyIcon: { fontSize: 48, marginBottom: 16 },
+    emptyText: { color: t.text, fontSize: 18, fontWeight: '600', marginBottom: 8 },
+    emptySubtext: { color: t.textMuted, fontSize: 14, marginBottom: 20 },
+    resetBtn: { backgroundColor: t.accent, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 20 },
+    resetBtnText: { color: t.accentText, fontSize: 14, fontWeight: '800' },
+  });
+}

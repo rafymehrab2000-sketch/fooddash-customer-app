@@ -1,12 +1,13 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity,
   StyleSheet, Animated, ScrollView, TextInput
 } from 'react-native';
+import { useTheme } from '../context/ThemeContext';
 
 const MENU_CATEGORIES = ['All', 'Starters', 'Mains', 'Sides', 'Drinks', 'Desserts'];
 
-function MenuItemCard({ item, qty, onAdd, onRemove }) {
+function MenuItemCard({ item, qty, onAdd, onRemove, styles }) {
   const scale = useRef(new Animated.Value(1)).current;
 
   const pulse = () => {
@@ -65,6 +66,9 @@ function MenuItemCard({ item, qty, onAdd, onRemove }) {
 }
 
 export default function RestaurantScreen({ route, navigation }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const { restaurant } = route.params;
   const [cart, setCart] = useState([]);
   const [activeCategory, setActiveCategory] = useState('All');
@@ -112,6 +116,7 @@ export default function RestaurantScreen({ route, navigation }) {
             qty={getQty(item.id)}
             onAdd={addToCart}
             onRemove={removeFromCart}
+            styles={styles}
           />
         )}
         contentContainerStyle={styles.list}
@@ -143,13 +148,12 @@ export default function RestaurantScreen({ route, navigation }) {
               </View>
             </View>
 
-            {/* Menu search */}
             <View style={[styles.menuSearchWrapper, searchFocused && styles.menuSearchFocused]}>
               <Text style={styles.menuSearchIcon}>🔍</Text>
               <TextInput
                 style={styles.menuSearch}
                 placeholder="Search menu..."
-                placeholderTextColor="#6b7db3"
+                placeholderTextColor={theme.textMuted}
                 value={search}
                 onChangeText={setSearch}
                 onFocus={() => setSearchFocused(true)}
@@ -162,7 +166,6 @@ export default function RestaurantScreen({ route, navigation }) {
               )}
             </View>
 
-            {/* Category pills */}
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryRow}>
               {MENU_CATEGORIES.map(cat => (
                 <TouchableOpacity
@@ -214,140 +217,130 @@ export default function RestaurantScreen({ route, navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0f1a33' },
+function createStyles(t) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: t.bg },
 
-  // Header / hero
-  header: { backgroundColor: '#1A2744', paddingBottom: 8 },
-  backButton: { paddingHorizontal: 20, paddingTop: 54, paddingBottom: 12 },
-  backText: { color: 'rgba(255,255,255,0.7)', fontSize: 16 },
-  heroBox: {
-    height: 160, backgroundColor: '#243260',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  heroEmoji: { fontSize: 64 },
-  headerInfo: { padding: 20, paddingBottom: 16 },
-  headerTitle: { fontSize: 26, fontWeight: '800', color: '#fff', marginBottom: 6 },
-  headerRatingRow: { flexDirection: 'row', alignItems: 'center', gap: 2, marginBottom: 8 },
-  headerStar: { fontSize: 14, color: '#F5A623' },
-  headerRatingValue: { fontSize: 13, color: '#a0aec0', marginLeft: 6, fontWeight: '600' },
-  headerAddress: { fontSize: 14, color: '#a0aec0', marginBottom: 12 },
-  headerMeta: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 },
-  statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
-  statusBadgeText: { color: '#fff', fontSize: 12, fontWeight: '700' },
-  headerMetaDot: { color: '#2d3e6e', fontSize: 16 },
-  headerMetaText: { fontSize: 13, color: '#a0aec0' },
+    header: { backgroundColor: t.card, paddingBottom: 8 },
+    backButton: { paddingHorizontal: 20, paddingTop: 54, paddingBottom: 12 },
+    backText: { color: t.textFaint2, fontSize: 16 },
+    heroBox: {
+      height: 160, backgroundColor: t.cardAlt,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    heroEmoji: { fontSize: 64 },
+    headerInfo: { padding: 20, paddingBottom: 16 },
+    headerTitle: { fontSize: 26, fontWeight: '800', color: t.text, marginBottom: 6 },
+    headerRatingRow: { flexDirection: 'row', alignItems: 'center', gap: 2, marginBottom: 8 },
+    headerStar: { fontSize: 14, color: t.accent },
+    headerRatingValue: { fontSize: 13, color: t.textSub, marginLeft: 6, fontWeight: '600' },
+    headerAddress: { fontSize: 14, color: t.textSub, marginBottom: 12 },
+    headerMeta: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 },
+    statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
+    statusBadgeText: { color: '#fff', fontSize: 12, fontWeight: '700' },
+    headerMetaDot: { color: t.border, fontSize: 16 },
+    headerMetaText: { fontSize: 13, color: t.textSub },
 
-  // Menu search
-  menuSearchWrapper: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#243260', borderRadius: 14,
-    borderWidth: 1, borderColor: '#2d3e6e',
-    marginHorizontal: 20, marginBottom: 14, paddingHorizontal: 14,
-  },
-  menuSearchFocused: {
-    borderColor: '#F5A623',
-    shadowColor: '#F5A623', shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.2, shadowRadius: 6, elevation: 2,
-  },
-  menuSearchIcon: { fontSize: 15, marginRight: 8 },
-  menuSearch: { flex: 1, paddingVertical: 12, fontSize: 14, color: '#fff' },
-  menuSearchClear: { padding: 4 },
-  menuSearchClearText: { color: '#6b7db3', fontSize: 13 },
+    menuSearchWrapper: {
+      flexDirection: 'row', alignItems: 'center',
+      backgroundColor: t.inputBg, borderRadius: 14,
+      borderWidth: 1, borderColor: t.inputBorder,
+      marginHorizontal: 20, marginBottom: 14, paddingHorizontal: 14,
+    },
+    menuSearchFocused: {
+      borderColor: t.accent,
+      shadowColor: t.accent, shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.2, shadowRadius: 6, elevation: 2,
+    },
+    menuSearchIcon: { fontSize: 15, marginRight: 8 },
+    menuSearch: { flex: 1, paddingVertical: 12, fontSize: 14, color: t.text },
+    menuSearchClear: { padding: 4 },
+    menuSearchClearText: { color: t.textMuted, fontSize: 13 },
 
-  // Category pills
-  categoryRow: { paddingHorizontal: 20, gap: 8, paddingBottom: 4 },
-  pill: {
-    paddingHorizontal: 14, paddingVertical: 7,
-    borderRadius: 20, backgroundColor: '#243260',
-    borderWidth: 1, borderColor: '#2d3e6e',
-  },
-  pillActive: { backgroundColor: '#F5A623', borderColor: '#F5A623' },
-  pillText: { fontSize: 13, fontWeight: '600', color: '#a0aec0' },
-  pillTextActive: { color: '#1A2744' },
+    categoryRow: { paddingHorizontal: 20, gap: 8, paddingBottom: 4 },
+    pill: {
+      paddingHorizontal: 14, paddingVertical: 7,
+      borderRadius: 20, backgroundColor: t.cardAlt,
+      borderWidth: 1, borderColor: t.border,
+    },
+    pillActive: { backgroundColor: t.accent, borderColor: t.accent },
+    pillText: { fontSize: 13, fontWeight: '600', color: t.textSub },
+    pillTextActive: { color: t.accentText },
 
-  // Menu label
-  menuLabelRow: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: 20, paddingTop: 14, paddingBottom: 16,
-    borderTopWidth: 1, borderTopColor: '#2d3e6e', marginTop: 12,
-  },
-  menuLabel: { fontSize: 18, fontWeight: '800', color: '#fff' },
-  menuCount: { fontSize: 13, color: '#6b7db3' },
+    menuLabelRow: {
+      flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+      paddingHorizontal: 20, paddingTop: 14, paddingBottom: 16,
+      borderTopWidth: 1, borderTopColor: t.border, marginTop: 12,
+    },
+    menuLabel: { fontSize: 18, fontWeight: '800', color: t.text },
+    menuCount: { fontSize: 13, color: t.textMuted },
 
-  // List
-  list: { paddingBottom: 100 },
+    list: { paddingBottom: 100 },
 
-  // Item cards
-  itemCard: {
-    flexDirection: 'row', backgroundColor: '#1A2744',
-    marginHorizontal: 16, marginBottom: 12, borderRadius: 16,
-    overflow: 'hidden',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.25, shadowRadius: 8, elevation: 4,
-  },
-  itemCardUnavailable: { opacity: 0.5 },
-  itemImageBox: {
-    width: 90, backgroundColor: '#243260',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  itemEmoji: { fontSize: 36 },
-  itemInfo: { flex: 1, padding: 14 },
-  itemTopRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4, gap: 8 },
-  itemName: { fontSize: 15, fontWeight: '700', color: '#fff', flex: 1 },
-  unavailableBadge: {
-    backgroundColor: '#2d3e6e', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 8,
-  },
-  unavailableBadgeText: { fontSize: 10, color: '#6b7db3', fontWeight: '600' },
-  itemDesc: { fontSize: 12, color: '#6b7db3', marginBottom: 12, lineHeight: 17 },
-  itemFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  itemPrice: { fontSize: 17, fontWeight: '800', color: '#F5A623' },
+    itemCard: {
+      flexDirection: 'row', backgroundColor: t.card,
+      marginHorizontal: 16, marginBottom: 12, borderRadius: 16,
+      overflow: 'hidden',
+      shadowColor: '#000', shadowOffset: { width: 0, height: 3 },
+      shadowOpacity: 0.08, shadowRadius: 8, elevation: 4,
+    },
+    itemCardUnavailable: { opacity: 0.5 },
+    itemImageBox: {
+      width: 90, backgroundColor: t.cardAlt,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    itemEmoji: { fontSize: 36 },
+    itemInfo: { flex: 1, padding: 14 },
+    itemTopRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4, gap: 8 },
+    itemName: { fontSize: 15, fontWeight: '700', color: t.text, flex: 1 },
+    unavailableBadge: {
+      backgroundColor: t.cardAlt, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 8,
+    },
+    unavailableBadgeText: { fontSize: 10, color: t.textMuted, fontWeight: '600' },
+    itemDesc: { fontSize: 12, color: t.textMuted, marginBottom: 12, lineHeight: 17 },
+    itemFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    itemPrice: { fontSize: 17, fontWeight: '800', color: t.accent },
 
-  // Add button
-  addButton: {
-    backgroundColor: '#F5A623', borderRadius: 22,
-    paddingHorizontal: 16, paddingVertical: 8, minWidth: 72, alignItems: 'center',
-  },
-  addButtonLabel: { fontSize: 14, fontWeight: '800', color: '#1A2744' },
-  addButtonDisabled: {
-    backgroundColor: '#1e2d50', borderRadius: 22,
-    paddingHorizontal: 12, paddingVertical: 8,
-  },
-  addButtonDisabledText: { fontSize: 11, color: '#4a5d80', fontWeight: '600' },
+    addButton: {
+      backgroundColor: t.accent, borderRadius: 22,
+      paddingHorizontal: 16, paddingVertical: 8, minWidth: 72, alignItems: 'center',
+    },
+    addButtonLabel: { fontSize: 14, fontWeight: '800', color: t.accentText },
+    addButtonDisabled: {
+      backgroundColor: t.cardAlt, borderRadius: 22,
+      paddingHorizontal: 12, paddingVertical: 8,
+    },
+    addButtonDisabledText: { fontSize: 11, color: t.textDim, fontWeight: '600' },
 
-  // Qty stepper
-  qtyControl: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#243260', borderRadius: 22,
-    borderWidth: 1, borderColor: '#F5A623',
-  },
-  qtyBtn: { paddingHorizontal: 12, paddingVertical: 8 },
-  qtyBtnText: { fontSize: 18, fontWeight: '800', color: '#F5A623' },
-  qtyValue: { fontSize: 14, fontWeight: '800', color: '#fff', minWidth: 20, textAlign: 'center' },
+    qtyControl: {
+      flexDirection: 'row', alignItems: 'center',
+      backgroundColor: t.cardAlt, borderRadius: 22,
+      borderWidth: 1, borderColor: t.accent,
+    },
+    qtyBtn: { paddingHorizontal: 12, paddingVertical: 8 },
+    qtyBtnText: { fontSize: 18, fontWeight: '800', color: t.accent },
+    qtyValue: { fontSize: 14, fontWeight: '800', color: t.text, minWidth: 20, textAlign: 'center' },
 
-  // Empty
-  empty: { alignItems: 'center', paddingTop: 60 },
-  emptyIcon: { fontSize: 48, marginBottom: 16 },
-  emptyText: { color: '#fff', fontSize: 18, fontWeight: '600', marginBottom: 6 },
-  emptySubtext: { color: '#6b7db3', fontSize: 14, marginBottom: 20 },
-  resetBtn: {
-    backgroundColor: '#F5A623', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 20,
-  },
-  resetBtnText: { color: '#1A2744', fontSize: 14, fontWeight: '800' },
+    empty: { alignItems: 'center', paddingTop: 60 },
+    emptyIcon: { fontSize: 48, marginBottom: 16 },
+    emptyText: { color: t.text, fontSize: 18, fontWeight: '600', marginBottom: 6 },
+    emptySubtext: { color: t.textMuted, fontSize: 14, marginBottom: 20 },
+    resetBtn: { backgroundColor: t.accent, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 20 },
+    resetBtnText: { color: t.accentText, fontSize: 14, fontWeight: '800' },
 
-  // Cart bar
-  cartButton: {
-    position: 'absolute', bottom: 24, left: 16, right: 16,
-    backgroundColor: '#F5A623', borderRadius: 18, padding: 18,
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    shadowColor: '#F5A623', shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4, shadowRadius: 12, elevation: 8,
-  },
-  cartButtonBadge: {
-    backgroundColor: '#1A2744', width: 28, height: 28,
-    borderRadius: 14, alignItems: 'center', justifyContent: 'center',
-  },
-  cartButtonBadgeText: { color: '#F5A623', fontSize: 13, fontWeight: '800' },
-  cartButtonText: { fontSize: 16, fontWeight: '800', color: '#1A2744', flex: 1, textAlign: 'center' },
-  cartButtonTotal: { fontSize: 16, fontWeight: '800', color: '#1A2744' },
-});
+    cartButton: {
+      position: 'absolute', bottom: 24, left: 16, right: 16,
+      backgroundColor: t.accent, borderRadius: 18, padding: 18,
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      shadowColor: t.accent, shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.4, shadowRadius: 12, elevation: 8,
+    },
+    cartButtonBadge: {
+      backgroundColor: t.accentText, width: 28, height: 28,
+      borderRadius: 14, alignItems: 'center', justifyContent: 'center',
+    },
+    cartButtonBadgeText: { color: t.accent, fontSize: 13, fontWeight: '800' },
+    cartButtonText: { fontSize: 16, fontWeight: '800', color: t.accentText, flex: 1, textAlign: 'center' },
+    cartButtonTotal: { fontSize: 16, fontWeight: '800', color: t.accentText },
+  });
+}
