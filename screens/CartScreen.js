@@ -7,6 +7,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import API from '../services/api';
 import { useTheme } from '../context/ThemeContext';
+import { useCart } from '../context/CartContext';
 
 const MAX_ADDRESS_CHARS = 120;
 
@@ -19,11 +20,11 @@ function FieldStatus({ value, isValid, styles }) {
   );
 }
 
-export default function CartScreen({ route, navigation }) {
+export default function CartScreen({ navigation }) {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const { items: cart, restaurant, clearCart } = useCart();
 
-  const { cart, restaurant } = route.params;
   const [address, setAddress] = useState('');
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
@@ -61,6 +62,7 @@ export default function CartScreen({ route, navigation }) {
           price: item.price,
         }))
       });
+      clearCart();
       Alert.alert(
         '🎉 Order Placed!',
         'Your order has been placed successfully!',

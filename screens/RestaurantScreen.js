@@ -4,6 +4,7 @@ import {
   StyleSheet, Animated, ScrollView, TextInput
 } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
+import { useCart } from '../context/CartContext';
 
 const MENU_CATEGORIES = ['All', 'Starters', 'Mains', 'Sides', 'Drinks', 'Desserts'];
 
@@ -68,35 +69,21 @@ function MenuItemCard({ item, qty, onAdd, onRemove, styles }) {
 export default function RestaurantScreen({ route, navigation }) {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const { addToCart, removeFromCart, getQty, cartCount, cartTotal, items: cartItems } = useCart();
 
   const { restaurant } = route.params;
-  const [cart, setCart] = useState([]);
   const [activeCategory, setActiveCategory] = useState('All');
   const [search, setSearch] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
 
-  const addToCart = (item) => {
-    const existing = cart.find(c => c.id === item.id);
-    if (existing) {
-      setCart(cart.map(c => c.id === item.id ? { ...c, quantity: c.quantity + 1 } : c));
-    } else {
-      setCart([...cart, { ...item, quantity: 1 }]);
-    }
-  };
+  const handleAdd = (item) => addToCart(item, restaurant);
+  const handleRemove = (item) => removeFromCart(item);
 
-  const removeFromCart = (item) => {
-    const existing = cart.find(c => c.id === item.id);
-    if (!existing) return;
-    if (existing.quantity === 1) {
-      setCart(cart.filter(c => c.id !== item.id));
-    } else {
-      setCart(cart.map(c => c.id === item.id ? { ...c, quantity: c.quantity - 1 } : c));
-    }
-  };
-
-  const cartTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
-  const getQty = (itemId) => cart.find(c => c.id === itemId)?.quantity || 0;
+  const cartFromThisRestaurant = cartItems.filter(i =>
+    (restaurant.menuItems || []).some(m => m.id === i.id)
+  );
+  const localCartCount = cartFromThisRestaurant.reduce((sum, i) => sum + i.quantity, 0);
+  const localCartTotal = cartFromThisRestaurant.reduce((sum, i) => sum + i.price * i.quantity, 0);
 
   const filteredItems = (restaurant.menuItems || []).filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(search.toLowerCase());
@@ -114,8 +101,8 @@ export default function RestaurantScreen({ route, navigation }) {
           <MenuItemCard
             item={item}
             qty={getQty(item.id)}
-            onAdd={addToCart}
-            onRemove={removeFromCart}
+            onAdd={handleAdd}
+            onRemove={handleRemove}
             styles={styles}
           />
         )}
@@ -201,16 +188,16 @@ export default function RestaurantScreen({ route, navigation }) {
         }
       />
 
-      {cart.length > 0 && (
+      {localCartCount > 0 && (
         <TouchableOpacity
           style={styles.cartButton}
-          onPress={() => navigation.navigate('Cart', { cart, restaurant })}
+          onPress={() => navigation.navigate('Cart')}
         >
           <View style={styles.cartButtonBadge}>
-            <Text style={styles.cartButtonBadgeText}>{cartCount}</Text>
+            <Text style={styles.cartButtonBadgeText}>{localCartCount}</Text>
           </View>
           <Text style={styles.cartButtonText}>View Cart</Text>
-          <Text style={styles.cartButtonTotal}>€{cartTotal.toFixed(2)}</Text>
+          <Text style={styles.cartButtonTotal}>€{localCartTotal.toFixed(2)}</Text>
         </TouchableOpacity>
       )}
     </View>
