@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, TextInput, ActivityIndicator, Alert } from 'react-native';
+import {
+  View, Text, TouchableOpacity, StyleSheet, TextInput,
+  ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView
+} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import API from '../services/api';
 
@@ -26,47 +29,127 @@ export default function LoginScreen({ navigation, onLoginSuccess }) {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.content}>
-        <Text style={styles.logo}>🍔 FoodDash</Text>
-        <Text style={styles.subtitle}>Sign in to order food</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Email"
-          placeholderTextColor="#6b7db3"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Password"
-          placeholderTextColor="#6b7db3"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-        />
-        <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
-          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Sign In</Text>}
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.registerLink} onPress={() => navigation.navigate('Register')}>
-          <Text style={styles.footerText}>Don't have an account? <Text style={styles.orangeText}>Register</Text></Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+
+        {/* Hero */}
+        <View style={styles.hero}>
+          <View style={styles.logoBox}>
+            <Text style={styles.logoEmoji}>🍔</Text>
+          </View>
+          <Text style={styles.appName}>FoodDash</Text>
+          <Text style={styles.tagline}>Order food you love</Text>
+        </View>
+
+        {/* Card */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Welcome back</Text>
+          <Text style={styles.cardSubtitle}>Sign in to your account</Text>
+
+          <View style={styles.inputWrapper}>
+            <Text style={styles.inputIcon}>📧</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Email address"
+              placeholderTextColor="#6b7db3"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+          </View>
+
+          <View style={styles.inputWrapper}>
+            <Text style={styles.inputIcon}>🔒</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Password"
+              placeholderTextColor="#6b7db3"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+            />
+          </View>
+
+          <TouchableOpacity
+            style={[styles.button, loading && styles.buttonLoading]}
+            onPress={handleLogin}
+            disabled={loading}
+          >
+            {loading
+              ? <ActivityIndicator color="#1A2744" />
+              : <Text style={styles.buttonText}>Sign In</Text>
+            }
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.registerLink}
+            onPress={() => navigation.navigate('Register')}
+          >
+            <Text style={styles.footerText}>
+              Don't have an account?{'  '}
+              <Text style={styles.footerHighlight}>Register</Text>
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#1A2744', justifyContent: 'center' },
-  content: { paddingHorizontal: 30 },
-  logo: { fontSize: 40, fontWeight: '800', color: '#F5A623', textAlign: 'center', marginBottom: 8 },
-  subtitle: { fontSize: 14, color: '#a0aec0', textAlign: 'center', marginBottom: 40 },
-  input: { backgroundColor: '#243260', padding: 16, borderRadius: 12, marginBottom: 16, fontSize: 16, borderWidth: 1, borderColor: '#2d3e6e', color: '#fff' },
-  button: { backgroundColor: '#F5A623', padding: 18, borderRadius: 12, alignItems: 'center', marginTop: 10 },
-  buttonText: { color: '#1A2744', fontSize: 18, fontWeight: '700' },
-  registerLink: { marginTop: 25 },
-  footerText: { textAlign: 'center', color: '#a0aec0', fontSize: 15 },
-  orangeText: { color: '#F5A623', fontWeight: 'bold' },
+  container: { flex: 1, backgroundColor: '#0f1a33' },
+  scrollContent: { flexGrow: 1, justifyContent: 'center', padding: 24 },
+
+  // Hero
+  hero: { alignItems: 'center', marginBottom: 32 },
+  logoBox: {
+    width: 80, height: 80, borderRadius: 24,
+    backgroundColor: '#F5A623',
+    alignItems: 'center', justifyContent: 'center',
+    marginBottom: 14,
+    shadowColor: '#F5A623', shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4, shadowRadius: 14, elevation: 8,
+  },
+  logoEmoji: { fontSize: 40 },
+  appName: { fontSize: 32, fontWeight: '800', color: '#fff', marginBottom: 6 },
+  tagline: { fontSize: 15, color: '#6b7db3' },
+
+  // Card
+  card: {
+    backgroundColor: '#1A2744', borderRadius: 24, padding: 24,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3, shadowRadius: 16, elevation: 8,
+  },
+  cardTitle: { fontSize: 22, fontWeight: '800', color: '#fff', marginBottom: 4 },
+  cardSubtitle: { fontSize: 14, color: '#6b7db3', marginBottom: 24 },
+
+  // Inputs
+  inputWrapper: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: '#243260', borderRadius: 14,
+    borderWidth: 1, borderColor: '#2d3e6e',
+    paddingHorizontal: 14, marginBottom: 14,
+  },
+  inputIcon: { fontSize: 16, marginRight: 10 },
+  input: { flex: 1, paddingVertical: 14, fontSize: 15, color: '#fff' },
+
+  // Button
+  button: {
+    backgroundColor: '#F5A623', borderRadius: 14, padding: 17,
+    alignItems: 'center', marginTop: 6,
+    shadowColor: '#F5A623', shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4, shadowRadius: 10, elevation: 6,
+  },
+  buttonLoading: { opacity: 0.8 },
+  buttonText: { color: '#1A2744', fontSize: 17, fontWeight: '800' },
+
+  // Footer
+  registerLink: { marginTop: 22, alignItems: 'center' },
+  footerText: { color: '#6b7db3', fontSize: 14 },
+  footerHighlight: { color: '#F5A623', fontWeight: '700' },
 });
