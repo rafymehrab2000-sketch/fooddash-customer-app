@@ -11,6 +11,7 @@ import RestaurantScreen from './screens/RestaurantScreen';
 import CartScreen from './screens/CartScreen';
 import OrderTrackingScreen from './screens/OrderTrackingScreen';
 import ProfileScreen from './screens/ProfileScreen';
+import SplashScreen from './screens/SplashScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -45,7 +46,8 @@ function MainTabs() {
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [authReady, setAuthReady] = useState(false);
+  const [splashDone, setSplashDone] = useState(false);
 
   useEffect(() => {
     checkLogin();
@@ -58,12 +60,17 @@ export default function App() {
     } catch (e) {
       console.error(e);
     }
-    setLoading(false);
+    setAuthReady(true);
   };
 
   const handleAuthSuccess = () => setIsLoggedIn(true);
 
-  if (loading) return null;
+  // Show splash until both auth check and splash animation are done
+  if (!splashDone || !authReady) {
+    return (
+      <SplashScreen onReady={() => setSplashDone(true)} />
+    );
+  }
 
   return (
     <NavigationContainer>
