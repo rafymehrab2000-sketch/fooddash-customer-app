@@ -4,6 +4,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Text, View, TouchableOpacity, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
 import HomeScreen from './screens/HomeScreen';
@@ -65,11 +66,11 @@ function MainTabs() {
     <Tab.Navigator
       screenOptions={{
         tabBarActiveTintColor: '#F5A623',
-        tabBarInactiveTintColor: '#4a5d80',
+        tabBarInactiveTintColor: '#7a9cc4',
         tabBarStyle: {
-          backgroundColor: '#1A2744',
+          backgroundColor: '#1e2d50',
           borderTopWidth: 1,
-          borderTopColor: '#2d3e6e',
+          borderTopColor: '#2a3f6e',
           paddingBottom: 8,
           paddingTop: 8,
           height: 60,
@@ -81,11 +82,11 @@ function MainTabs() {
         headerShown: false,
       }}
     >
-      <Tab.Screen name="Home" component={HomeScreen} options={{ tabBarIcon: ({ color }) => <Text style={{ fontSize: 22, color }}>🏠</Text>, tabBarLabel: 'Home' }} />
-      <Tab.Screen name="CartTab" component={CartTabScreen} options={{ tabBarIcon: ({ color }) => <Text style={{ fontSize: 22, color }}>🛒</Text>, tabBarLabel: 'Cart' }} />
-      <Tab.Screen name="Orders" component={OrderTrackingScreen} options={{ tabBarIcon: ({ color }) => <Text style={{ fontSize: 22, color }}>🧾</Text>, tabBarLabel: 'Orders' }} />
-      <Tab.Screen name="Notifications" component={NotificationsScreen} options={{ tabBarIcon: ({ color }) => <Text style={{ fontSize: 22, color }}>🔔</Text>, tabBarLabel: 'Alerts' }} />
-      <Tab.Screen name="Profile" component={ProfileScreen} options={{ tabBarIcon: ({ color }) => <Text style={{ fontSize: 22, color }}>👤</Text>, tabBarLabel: 'Profile' }} />
+      <Tab.Screen name="Home" component={HomeScreen} options={{ tabBarIcon: ({ color, focused }) => <Ionicons name={focused ? 'home' : 'home-outline'} size={24} color={color} />, tabBarLabel: 'Home' }} />
+      <Tab.Screen name="CartTab" component={CartTabScreen} options={{ tabBarIcon: ({ color, focused }) => <Ionicons name={focused ? 'cart' : 'cart-outline'} size={24} color={color} />, tabBarLabel: 'Cart' }} />
+      <Tab.Screen name="Orders" component={OrderTrackingScreen} options={{ tabBarIcon: ({ color, focused }) => <Ionicons name={focused ? 'receipt' : 'receipt-outline'} size={24} color={color} />, tabBarLabel: 'Orders' }} />
+      <Tab.Screen name="Notifications" component={NotificationsScreen} options={{ tabBarIcon: ({ color, focused }) => <Ionicons name={focused ? 'notifications' : 'notifications-outline'} size={24} color={color} />, tabBarLabel: 'Alerts' }} />
+      <Tab.Screen name="Profile" component={ProfileScreen} options={{ tabBarIcon: ({ color, focused }) => <Ionicons name={focused ? 'person' : 'person-outline'} size={24} color={color} />, tabBarLabel: 'Profile' }} />
     </Tab.Navigator>
   );
 }
