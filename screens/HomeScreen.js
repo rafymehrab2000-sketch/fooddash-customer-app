@@ -116,6 +116,13 @@ export default function HomeScreen({ navigation }) {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
+        {/* Location selector */}
+        <TouchableOpacity style={styles.locationRow} activeOpacity={0.7}>
+          <Text style={styles.locationPin}>📍</Text>
+          <Text style={styles.locationText}>Jyväskylä, Finland</Text>
+          <Text style={styles.locationArrow}>▾</Text>
+        </TouchableOpacity>
+
         <View style={styles.headerTop}>
           <View>
             <Text style={styles.headerGreeting}>
@@ -144,6 +151,39 @@ export default function HomeScreen({ navigation }) {
           )}
         </View>
       </View>
+
+      {/* Featured */}
+      {!loading && restaurants.length > 0 && (
+        <View style={styles.featuredSection}>
+          <Text style={styles.featuredLabel}>Featured</Text>
+          <TouchableOpacity
+            style={styles.featuredCard}
+            activeOpacity={0.9}
+            onPress={() => navigation.navigate('Restaurant', { restaurant: restaurants[0] })}
+          >
+            <View style={styles.featuredImageBox}>
+              <Text style={styles.featuredEmoji}>🌟</Text>
+              <View style={styles.featuredBadge}>
+                <Text style={styles.featuredBadgeText}>⭐ Featured</Text>
+              </View>
+              <View style={[styles.featuredStatusBadge, { backgroundColor: restaurants[0].isOpen ? '#22c55e' : '#ef4444' }]}>
+                <Text style={styles.featuredStatusText}>{restaurants[0].isOpen ? 'Open' : 'Closed'}</Text>
+              </View>
+            </View>
+            <View style={styles.featuredBody}>
+              <Text style={styles.featuredName}>{restaurants[0].name}</Text>
+              <Text style={styles.featuredAddress} numberOfLines={1}>📍 {restaurants[0].address}</Text>
+              <View style={styles.featuredMeta}>
+                <Text style={styles.featuredMetaText}>🍴 {restaurants[0].menuItems?.length || 0} items</Text>
+                <Text style={styles.featuredMetaDot}>·</Text>
+                <Text style={styles.featuredMetaText}>🕐 25–35 min</Text>
+                <Text style={styles.featuredMetaDot}>·</Text>
+                <Text style={styles.featuredMetaAmber}>€3.50 delivery</Text>
+              </View>
+            </View>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Categories */}
       <View style={styles.categoriesWrapper}>
@@ -231,9 +271,47 @@ const styles = StyleSheet.create({
     backgroundColor: '#1A2744', paddingHorizontal: 20,
     paddingTop: 54, paddingBottom: 20,
   },
+  locationRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    marginBottom: 14,
+  },
+  locationPin: { fontSize: 14 },
+  locationText: { fontSize: 14, fontWeight: '700', color: '#fff', flex: 1 },
+  locationArrow: { fontSize: 14, color: '#F5A623', fontWeight: '700' },
   headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 },
   headerGreeting: { fontSize: 13, color: 'rgba(255,255,255,0.5)', marginBottom: 4 },
   headerTitle: { fontSize: 22, fontWeight: '800', color: '#fff' },
+
+  // Featured
+  featuredSection: { backgroundColor: '#1A2744', paddingHorizontal: 20, paddingBottom: 16 },
+  featuredLabel: { fontSize: 12, fontWeight: '700', color: '#6b7db3', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 },
+  featuredCard: {
+    backgroundColor: '#243260', borderRadius: 18, overflow: 'hidden',
+    shadowColor: '#F5A623', shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15, shadowRadius: 10, elevation: 4,
+  },
+  featuredImageBox: {
+    height: 130, backgroundColor: '#1e2d50',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  featuredEmoji: { fontSize: 52 },
+  featuredBadge: {
+    position: 'absolute', top: 10, left: 10,
+    backgroundColor: '#F5A623', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20,
+  },
+  featuredBadgeText: { fontSize: 11, fontWeight: '800', color: '#1A2744' },
+  featuredStatusBadge: {
+    position: 'absolute', top: 10, right: 10,
+    paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20,
+  },
+  featuredStatusText: { fontSize: 11, fontWeight: '700', color: '#fff' },
+  featuredBody: { padding: 14 },
+  featuredName: { fontSize: 17, fontWeight: '800', color: '#fff', marginBottom: 4 },
+  featuredAddress: { fontSize: 13, color: '#a0aec0', marginBottom: 10 },
+  featuredMeta: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  featuredMetaText: { fontSize: 12, color: '#6b7db3' },
+  featuredMetaDot: { fontSize: 12, color: '#2d3e6e' },
+  featuredMetaAmber: { fontSize: 12, color: '#F5A623' },
   searchContainer: {
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: '#243260', borderRadius: 14,

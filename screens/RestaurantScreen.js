@@ -125,6 +125,12 @@ export default function RestaurantScreen({ route, navigation }) {
             </View>
             <View style={styles.headerInfo}>
               <Text style={styles.headerTitle}>{restaurant.name}</Text>
+              <View style={styles.headerRatingRow}>
+                {[1,2,3,4,5].map(i => (
+                  <Text key={i} style={styles.headerStar}>{i <= 4 ? '★' : '½'}</Text>
+                ))}
+                <Text style={styles.headerRatingValue}>4.5</Text>
+              </View>
               <Text style={styles.headerAddress}>📍 {restaurant.address}</Text>
               <View style={styles.headerMeta}>
                 <View style={[styles.statusBadge, { backgroundColor: restaurant.isOpen ? '#22c55e' : '#ef4444' }]}>
@@ -222,6 +228,9 @@ const styles = StyleSheet.create({
   heroEmoji: { fontSize: 64 },
   headerInfo: { padding: 20, paddingBottom: 16 },
   headerTitle: { fontSize: 26, fontWeight: '800', color: '#fff', marginBottom: 6 },
+  headerRatingRow: { flexDirection: 'row', alignItems: 'center', gap: 2, marginBottom: 8 },
+  headerStar: { fontSize: 14, color: '#F5A623' },
+  headerRatingValue: { fontSize: 13, color: '#a0aec0', marginLeft: 6, fontWeight: '600' },
   headerAddress: { fontSize: 14, color: '#a0aec0', marginBottom: 12 },
   headerMeta: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 },
   statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },

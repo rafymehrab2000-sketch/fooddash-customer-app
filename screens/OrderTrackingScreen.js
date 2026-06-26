@@ -35,12 +35,6 @@ const STATUS_STEPS = ['pending', 'accepted', 'preparing', 'ready', 'out_for_deli
 
 const ACTIVE_STATUSES = ['accepted', 'preparing', 'ready', 'out_for_delivery'];
 
-const MOCK_RIDERS = [
-  { name: 'Marco Rossi', rating: 4.9, trips: 1240 },
-  { name: 'Sara Ahmed', rating: 4.8, trips: 876 },
-  { name: 'James Okafor', rating: 4.7, trips: 543 },
-];
-
 function StarRating({ rating }) {
   const full = Math.floor(rating);
   const half = rating % 1 >= 0.5;
@@ -56,50 +50,46 @@ function StarRating({ rating }) {
   );
 }
 
-function ETATimer({ startSeconds = 30 * 60 }) {
-  const [seconds, setSeconds] = useState(startSeconds);
+function ETATimer({ startMinutes = 30 }) {
+  const [minutes, setMinutes] = useState(startMinutes);
   const intervalRef = useRef(null);
 
   useEffect(() => {
     intervalRef.current = setInterval(() => {
-      setSeconds(prev => (prev <= 1 ? 0 : prev - 1));
-    }, 1000);
+      setMinutes(prev => (prev <= 1 ? 0 : prev - 1));
+    }, 60000);
     return () => clearInterval(intervalRef.current);
   }, []);
 
   useEffect(() => {
-    if (seconds === 0) clearInterval(intervalRef.current);
-  }, [seconds]);
-
-  const mins = Math.floor(seconds / 60);
-  const secs = seconds % 60;
-  const pad = n => String(n).padStart(2, '0');
+    if (minutes === 0) clearInterval(intervalRef.current);
+  }, [minutes]);
 
   return (
     <View style={styles.etaBox}>
       <Text style={styles.etaLabel}>Estimated arrival</Text>
-      <Text style={styles.etaTime}>{pad(mins)}:{pad(secs)}</Text>
-      <Text style={styles.etaSubLabel}>{seconds === 0 ? 'Arriving now!' : 'minutes remaining'}</Text>
+      <Text style={styles.etaTime}>{minutes}</Text>
+      <Text style={styles.etaSubLabel}>{minutes === 0 ? 'Arriving now!' : 'min remaining'}</Text>
     </View>
   );
 }
 
-function RiderCard({ orderId }) {
-  const rider = MOCK_RIDERS[orderId % MOCK_RIDERS.length];
+function RiderCard({ rider }) {
+  const name = rider?.name || 'Your Rider';
+  const initial = name.charAt(0).toUpperCase();
   return (
     <View style={styles.riderCard}>
       <View style={styles.riderTop}>
         <View style={styles.riderAvatarWrapper}>
           <View style={styles.riderAvatar}>
-            <Text style={styles.riderAvatarText}>{rider.name.charAt(0)}</Text>
+            <Text style={styles.riderAvatarText}>{initial}</Text>
           </View>
           <View style={styles.riderOnlineDot} />
         </View>
         <View style={styles.riderInfo}>
           <Text style={styles.riderLabel}>Your rider</Text>
-          <Text style={styles.riderName}>{rider.name}</Text>
-          <StarRating rating={rider.rating} />
-          <Text style={styles.riderTrips}>{rider.trips.toLocaleString()} deliveries</Text>
+          <Text style={styles.riderName}>{name}</Text>
+          {rider?.rating != null && <StarRating rating={rider.rating} />}
         </View>
         <ETATimer />
       </View>
@@ -107,7 +97,7 @@ function RiderCard({ orderId }) {
       <View style={styles.riderActions}>
         <TouchableOpacity
           style={styles.riderActionBtn}
-          onPress={() => Alert.alert('Call Rider', `Calling ${rider.name}...`)}
+          onPress={() => Alert.alert('Call Rider', `Calling ${name}...`)}
         >
           <Text style={styles.riderActionIcon}>📞</Text>
           <Text style={styles.riderActionText}>Call</Text>
@@ -115,7 +105,7 @@ function RiderCard({ orderId }) {
         <View style={styles.riderActionDivider} />
         <TouchableOpacity
           style={styles.riderActionBtn}
-          onPress={() => Alert.alert('Message Rider', `Opening chat with ${rider.name}...`)}
+          onPress={() => Alert.alert('Message Rider', `Opening chat with ${name}...`)}
         >
           <Text style={styles.riderActionIcon}>💬</Text>
           <Text style={styles.riderActionText}>Message</Text>
@@ -185,7 +175,7 @@ export default function OrderTrackingScreen() {
 
       {/* Rider card — shown for active orders */}
       {ACTIVE_STATUSES.includes(item.status) && (
-        <RiderCard orderId={item.id} />
+        <RiderCard rider={item.assignedRider} />
       )}
 
       {/* Items */}
@@ -327,7 +317,6 @@ const styles = StyleSheet.create({
   starsRow: { flexDirection: 'row', alignItems: 'center', gap: 2, marginBottom: 2 },
   star: { fontSize: 13, color: '#F5A623' },
   ratingValue: { fontSize: 12, color: '#a0aec0', marginLeft: 4 },
-  riderTrips: { fontSize: 11, color: '#6b7db3' },
 
   // ETA
   etaBox: { alignItems: 'center', minWidth: 80 },
