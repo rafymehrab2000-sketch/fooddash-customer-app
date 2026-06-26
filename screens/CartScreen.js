@@ -1,21 +1,39 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
-  View, Text, FlatList, TouchableOpacity,
+  View, Text, TouchableOpacity,
   StyleSheet, TextInput, Alert, ActivityIndicator, ScrollView
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import API from '../services/api';
+
+const MAX_ADDRESS_CHARS = 120;
+
+function FieldStatus({ value, isValid }) {
+  if (!value) return null;
+  return (
+    <Text style={[styles.fieldStatus, isValid ? styles.fieldStatusOk : styles.fieldStatusErr]}>
+      {isValid ? '✓' : '✗'}
+    </Text>
+  );
+}
 
 export default function CartScreen({ route, navigation }) {
   const { cart, restaurant } = route.params;
   const [address, setAddress] = useState('');
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
+  const [focusedField, setFocusedField] = useState(null);
+
+  const addressRef = useRef(null);
 
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const deliveryFee = 3.50;
   const serviceFee = 0.80;
   const total = subtotal + deliveryFee + serviceFee;
+
+  const isPhoneValid = phone.length >= 7;
+  const isAddressValid = address.trim().length >= 5;
+  const canOrder = isPhoneValid && isAddressValid;
 
   const placeOrder = async () => {
     if (!address || !phone) {
@@ -87,7 +105,9 @@ export default function CartScreen({ route, navigation }) {
       {/* Delivery Details */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Delivery Details</Text>
-        <View style={styles.inputWrapper}>
+
+        {/* Phone */}
+        <View style={[styles.inputWrapper, focusedField === 'phone' && styles.inputWrapperFocused]}>
           <Text style={styles.inputIcon}>📞</Text>
           <TextInput
             style={styles.input}
@@ -96,18 +116,34 @@ export default function CartScreen({ route, navigation }) {
             value={phone}
             onChangeText={setPhone}
             keyboardType="phone-pad"
+            returnKeyType="next"
+            onSubmitEditing={() => addressRef.current?.focus()}
+            onFocus={() => setFocusedField('phone')}
+            onBlur={() => setFocusedField(null)}
           />
+          <FieldStatus value={phone} isValid={isPhoneValid} />
         </View>
-        <View style={[styles.inputWrapper, styles.inputWrapperMultiline]}>
-          <Text style={styles.inputIcon}>📍</Text>
+
+        {/* Address */}
+        <View style={[styles.inputWrapper, styles.inputWrapperMultiline, focusedField === 'address' && styles.inputWrapperFocused]}>
+          <Text style={[styles.inputIcon, { marginTop: 2 }]}>📍</Text>
           <TextInput
+            ref={addressRef}
             style={[styles.input, styles.addressInput]}
             placeholder="Delivery address"
             placeholderTextColor="#6b7db3"
             value={address}
-            onChangeText={setAddress}
+            onChangeText={v => v.length <= MAX_ADDRESS_CHARS && setAddress(v)}
             multiline
+            onFocus={() => setFocusedField('address')}
+            onBlur={() => setFocusedField(null)}
           />
+        </View>
+        <View style={styles.addressMeta}>
+          <Text style={[styles.fieldStatusInline, isAddressValid ? styles.fieldStatusOk : styles.addressHint]}>
+            {address.length > 0 ? (isAddressValid ? '✓ Address looks good' : 'Enter a full address') : ''}
+          </Text>
+          <Text style={styles.charCount}>{address.length}/{MAX_ADDRESS_CHARS}</Text>
         </View>
       </View>
 
@@ -134,18 +170,29 @@ export default function CartScreen({ route, navigation }) {
 
       {/* Place Order Button */}
       <TouchableOpacity
-        style={[styles.orderButton, loading && styles.orderButtonLoading]}
+        style={[
+          styles.orderButton,
+          !canOrder && styles.orderButtonDisabled,
+          loading && styles.orderButtonLoading,
+        ]}
         onPress={placeOrder}
         disabled={loading}
       >
         {loading ? (
-          <ActivityIndicator color="#1A2744" />
+          <View style={styles.orderButtonInner}>
+            <ActivityIndicator color="#1A2744" size="small" />
+            <Text style={styles.orderButtonText}>Placing order...</Text>
+          </View>
         ) : (
           <View style={styles.orderButtonInner}>
-            <Text style={styles.orderButtonText}>Place Order</Text>
-            <View style={styles.orderButtonPricePill}>
-              <Text style={styles.orderButtonPrice}>€{total.toFixed(2)}</Text>
-            </View>
+            <Text style={styles.orderButtonText}>
+              {canOrder ? 'Place Order' : 'Fill in details above'}
+            </Text>
+            {canOrder && (
+              <View style={styles.orderButtonPricePill}>
+                <Text style={styles.orderButtonPrice}>€{total.toFixed(2)}</Text>
+              </View>
+            )}
           </View>
         )}
       </TouchableOpacity>
@@ -198,10 +245,24 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: '#2d3e6e',
     paddingHorizontal: 14, marginBottom: 12,
   },
-  inputWrapperMultiline: { alignItems: 'flex-start', paddingTop: 14 },
+  inputWrapperFocused: {
+    borderColor: '#F5A623',
+    shadowColor: '#F5A623', shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.2, shadowRadius: 6, elevation: 2,
+  },
+  inputWrapperMultiline: { alignItems: 'flex-start', paddingTop: 14, marginBottom: 6 },
   inputIcon: { fontSize: 16, marginRight: 10 },
   input: { flex: 1, paddingVertical: 14, fontSize: 15, color: '#fff' },
   addressInput: { height: 80, textAlignVertical: 'top' },
+
+  // Field validation
+  fieldStatus: { fontSize: 16, fontWeight: '800', marginLeft: 8 },
+  fieldStatusOk: { color: '#22c55e' },
+  fieldStatusErr: { color: '#ef4444' },
+  fieldStatusInline: { fontSize: 12, fontWeight: '600' },
+  addressMeta: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4, paddingHorizontal: 4 },
+  addressHint: { color: '#6b7db3' },
+  charCount: { fontSize: 12, color: '#4a5d80' },
 
   // Price summary
   priceRow: {
@@ -224,7 +285,10 @@ const styles = StyleSheet.create({
     shadowColor: '#F5A623', shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4, shadowRadius: 12, elevation: 8,
   },
-  orderButtonLoading: { opacity: 0.8 },
+  orderButtonDisabled: {
+    backgroundColor: '#243260', shadowOpacity: 0,
+  },
+  orderButtonLoading: { opacity: 0.85 },
   orderButtonInner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   orderButtonText: { fontSize: 17, fontWeight: '800', color: '#1A2744' },
   orderButtonPricePill: {
