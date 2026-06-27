@@ -3,8 +3,11 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Text, View, TouchableOpacity, StyleSheet } from 'react-native';
+import { Alert, Platform, Text, View, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as Notifications from 'expo-notifications';
+import Constants from 'expo-constants';
+import API from './services/api';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { CartProvider, useCart } from './context/CartContext';
 import LoginScreen from './screens/LoginScreen';
@@ -179,6 +182,43 @@ function AppContent() {
   const [splashDone, setSplashDone] = useState(false);
 
   useEffect(() => { checkLogin(); }, []);
+
+  useEffect(() => {
+    if (!isLoggedIn) return;
+
+    let subscription;
+
+    const setupPushNotifications = async () => {
+      if (Platform.OS === 'android') {
+        await Notifications.setNotificationChannelAsync('default', {
+          name: 'default',
+          importance: Notifications.AndroidImportance.MAX,
+        });
+      }
+
+      const { status } = await Notifications.requestPermissionsAsync();
+      if (status !== 'granted') return;
+
+      const projectId = Constants.expoConfig?.extra?.eas?.projectId;
+      const { data: pushToken } = await Notifications.getExpoPushTokenAsync({ projectId });
+
+      try {
+        await API.post('/users/push-token', { token: pushToken });
+      } catch (e) {
+        console.error('Failed to save push token:', e);
+      }
+
+      subscription = Notifications.addNotificationReceivedListener((notification) => {
+        const title = notification.request.content.title ?? 'Notification';
+        const body = notification.request.content.body ?? '';
+        Alert.alert(title, body);
+      });
+    };
+
+    setupPushNotifications();
+
+    return () => subscription?.remove();
+  }, [isLoggedIn]);
 
   const checkLogin = async () => {
     try {
