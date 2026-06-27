@@ -1,8 +1,9 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
 import { useTheme } from './context/ThemeContext'
 import Navbar from './components/Navbar'
+import InstallBanner from './components/InstallBanner'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import HomePage from './pages/HomePage'
@@ -29,6 +30,17 @@ function AppLayout({ children }) {
 export default function App() {
   const { theme } = useTheme()
 
+  // Register service worker
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker
+          .register('/sw.js')
+          .catch(err => console.error('SW registration failed:', err))
+      })
+    }
+  }, [])
+
   return (
     <div style={{ backgroundColor: theme.bg, minHeight: '100vh', color: theme.text }}>
       <Routes>
@@ -41,6 +53,9 @@ export default function App() {
         <Route path="/profile" element={<ProtectedRoute><AppLayout><ProfilePage /></AppLayout></ProtectedRoute>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+
+      {/* PWA install prompt — shown after 3s on mobile */}
+      <InstallBanner />
     </div>
   )
 }

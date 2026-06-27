@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="100" fill="#F5A623"/>
+  <!-- Hamburger lines (navy) -->
+  <rect x="106" y="152" width="300" height="52" rx="26" fill="#1A2744"/>
+  <rect x="106" y="230" width="300" height="52" rx="26" fill="#1A2744"/>
+  <rect x="106" y="308" width="300" height="52" rx="26" fill="#1A2744"/>
+</svg>

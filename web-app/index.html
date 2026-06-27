@@ -2,9 +2,28 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>FoodDash</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg'><text y='32' font-size='32'>🍔</text></svg>" />
+
+    <!-- PWA manifest -->
+    <link rel="manifest" href="/manifest.json" />
+
+    <!-- Theme colour (Android Chrome, Samsung Browser) -->
+    <meta name="theme-color" content="#F5A623" />
+    <meta name="mobile-web-app-capable" content="yes" />
+
+    <!-- iOS / Safari PWA -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="FoodDash" />
+    <link rel="apple-touch-icon" href="/icon.svg" />
+
+    <!-- Splash / description -->
+    <meta name="description" content="Order food you love, delivered fast" />
+    <meta name="application-name" content="FoodDash" />
+
+    <!-- Favicon -->
+    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
   </head>
   <body>
     <div id="root"></div>
