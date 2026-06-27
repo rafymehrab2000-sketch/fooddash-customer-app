@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useTheme } from '../context/ThemeContext'
 import { useCart } from '../context/CartContext'
+import IOSInstallModal from './IOSInstallModal'
 
 const NAV_LINKS = [
   { to: '/', label: '🏠 Home' },
@@ -26,15 +27,14 @@ export default function Navbar() {
   const [deferredPrompt, setDeferredPrompt] = useState(null)
   const [showInstallBtn, setShowInstallBtn] = useState(false)
   const [isIOS, setIsIOS] = useState(false)
-  const [showIOSHint, setShowIOSHint] = useState(false)
-  const installBtnRef = useRef(null)
+  const [showIOSModal, setShowIOSModal] = useState(false)
 
   const isActive = (path) => location.pathname === path
 
   // Close mobile menu on navigation
   useEffect(() => {
     setMenuOpen(false)
-    setShowIOSHint(false)
+    setShowIOSModal(false)
   }, [location.pathname])
 
   // PWA install detection
@@ -56,21 +56,9 @@ export default function Navbar() {
     return () => window.removeEventListener('beforeinstallprompt', handler)
   }, [])
 
-  // Close iOS hint when clicking outside
-  useEffect(() => {
-    if (!showIOSHint) return
-    const handler = e => {
-      if (installBtnRef.current && !installBtnRef.current.contains(e.target)) {
-        setShowIOSHint(false)
-      }
-    }
-    document.addEventListener('pointerdown', handler)
-    return () => document.removeEventListener('pointerdown', handler)
-  }, [showIOSHint])
-
   const handleInstall = async () => {
     if (isIOS) {
-      setShowIOSHint(h => !h)
+      setShowIOSModal(true)
       return
     }
     if (deferredPrompt) {
@@ -193,39 +181,9 @@ export default function Navbar() {
 
             {/* Install button — only when installable */}
             {showInstallBtn && (
-              <div ref={installBtnRef} style={{ position: 'relative' }}>
-                <button onClick={handleInstall} style={installBtnStyle} title="Add to Home Screen">
-                  <DownloadIcon />
-                </button>
-
-                {/* iOS popover */}
-                {showIOSHint && (
-                  <div style={{
-                    position: 'absolute', top: 46, right: 0,
-                    backgroundColor: t.card,
-                    border: `1px solid ${t.accent}`,
-                    borderRadius: 14, padding: '12px 14px',
-                    width: 210,
-                    boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
-                    zIndex: 200,
-                  }}>
-                    {/* Arrow */}
-                    <div style={{
-                      position: 'absolute', top: -7, right: 11,
-                      width: 12, height: 12,
-                      backgroundColor: t.card,
-                      border: `1px solid ${t.accent}`,
-                      borderBottom: 'none', borderRight: 'none',
-                      transform: 'rotate(45deg)',
-                    }} />
-                    <div style={{ fontSize: 13, color: t.text, lineHeight: 1.5 }}>
-                      Tap <span style={{ fontSize: 15 }}>⬆</span>{' '}
-                      <strong style={{ color: t.accent }}>Share</strong>, then{' '}
-                      <strong style={{ color: t.accent }}>Add to Home Screen</strong>
-                    </div>
-                  </div>
-                )}
-              </div>
+              <button onClick={handleInstall} style={installBtnStyle} title="Add to Home Screen">
+                <DownloadIcon />
+              </button>
             )}
 
             {/* Theme toggle */}
@@ -284,6 +242,8 @@ export default function Navbar() {
           </div>
         )}
       </nav>
+      {/* iOS install modal */}
+      {showIOSModal && <IOSInstallModal onClose={() => setShowIOSModal(false)} />}
     </>
   )
 }
