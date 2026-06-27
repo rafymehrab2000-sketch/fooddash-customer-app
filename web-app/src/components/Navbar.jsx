@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useTheme } from '../context/ThemeContext'
 import { useCart } from '../context/CartContext'
+import { useNotifications } from '../context/NotificationsContext'
 import IOSInstallModal from './IOSInstallModal'
 
 const NAV_LINKS = [
@@ -19,27 +20,134 @@ function DownloadIcon() {
   )
 }
 
+function BellIcon() {
+  return (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6V11c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/>
+    </svg>
+  )
+}
+
+function NotifDropdown({ notifications, onMarkAsRead, onMarkAllAsRead, t }) {
+  const hasUnread = notifications.some(n => !n.read)
+  return (
+    <div style={{
+      position: 'absolute', right: 0, top: 'calc(100% + 8px)',
+      width: 320, maxWidth: 'calc(100vw - 24px)', maxHeight: 420, overflowY: 'auto',
+      backgroundColor: t.card, borderRadius: 16,
+      border: `1px solid ${t.border}`,
+      boxShadow: '0 8px 32px rgba(0,0,0,0.22)',
+      zIndex: 300,
+    }}>
+      <div style={{
+        padding: '14px 16px 12px', borderBottom: `1px solid ${t.border}`,
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        position: 'sticky', top: 0, backgroundColor: t.card, zIndex: 1,
+        borderTopLeftRadius: 16, borderTopRightRadius: 16,
+      }}>
+        <span style={{ fontSize: 15, fontWeight: 700, color: t.text }}>Notifications</span>
+        {hasUnread && (
+          <button
+            onClick={onMarkAllAsRead}
+            style={{
+              fontSize: 12, color: t.accent, cursor: 'pointer',
+              background: 'none', border: 'none', fontWeight: 600, padding: '2px 6px',
+            }}
+          >
+            Mark all read
+          </button>
+        )}
+      </div>
+
+      {notifications.length === 0 ? (
+        <div style={{ padding: '32px 16px', textAlign: 'center' }}>
+          <div style={{ fontSize: 36, marginBottom: 8 }}>🔔</div>
+          <div style={{ fontSize: 13, color: t.textMuted }}>No notifications yet</div>
+          <div style={{ fontSize: 11, color: t.textDim, marginTop: 4 }}>
+            Order updates will appear here
+          </div>
+        </div>
+      ) : (
+        notifications.slice(0, 20).map((n, idx) => (
+          <div
+            key={n.id}
+            onClick={() => onMarkAsRead(n.id)}
+            style={{
+              display: 'flex', alignItems: 'flex-start', gap: 10,
+              padding: '12px 16px',
+              borderBottom: idx < Math.min(notifications.length, 20) - 1
+                ? `1px solid ${t.borderDark}` : 'none',
+              backgroundColor: n.read ? 'transparent' : `${t.accent}18`,
+              cursor: 'pointer', transition: 'background 0.15s',
+            }}
+          >
+            <div style={{
+              width: 8, height: 8, borderRadius: 4, flexShrink: 0, marginTop: 5,
+              backgroundColor: n.read ? 'transparent' : t.accent,
+            }} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{
+                fontSize: 13, fontWeight: 700, color: t.text,
+                marginBottom: 2, lineHeight: 1.3,
+              }}>
+                {n.title}
+              </div>
+              <div style={{
+                fontSize: 12, color: t.textMuted,
+                lineHeight: 1.4, marginBottom: 4,
+              }}>
+                {n.body}
+              </div>
+              <div style={{ fontSize: 10, color: t.textDim }}>
+                {new Date(n.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                {' · '}
+                {new Date(n.time).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+              </div>
+            </div>
+          </div>
+        ))
+      )}
+    </div>
+  )
+}
+
 export default function Navbar() {
   const { theme: t, isDark, toggleTheme } = useTheme()
   const { cartCount } = useCart()
+  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications()
   const location = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
   const [deferredPrompt, setDeferredPrompt] = useState(null)
   const [showInstallBtn, setShowInstallBtn] = useState(false)
   const [isIOS, setIsIOS] = useState(false)
   const [showIOSModal, setShowIOSModal] = useState(false)
+  const [showNotifDropdown, setShowNotifDropdown] = useState(false)
+
+  const desktopNotifRef = useRef(null)
+  const mobileNotifRef = useRef(null)
 
   const isActive = (path) => location.pathname === path
 
-  // Close mobile menu on navigation
   useEffect(() => {
     setMenuOpen(false)
     setShowIOSModal(false)
+    setShowNotifDropdown(false)
   }, [location.pathname])
+
+  // Close notification dropdown on outside click
+  useEffect(() => {
+    if (!showNotifDropdown) return
+    const handler = (e) => {
+      const inDesktop = desktopNotifRef.current?.contains(e.target)
+      const inMobile = mobileNotifRef.current?.contains(e.target)
+      if (!inDesktop && !inMobile) setShowNotifDropdown(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [showNotifDropdown])
 
   // PWA install detection
   useEffect(() => {
-    // Already installed — hide button
     if (window.matchMedia('(display-mode: standalone)').matches) return
     if (window.navigator.standalone) return
 
@@ -71,6 +179,17 @@ export default function Navbar() {
     }
   }
 
+  const toggleNotif = () => setShowNotifDropdown(o => !o)
+
+  const bellButtonStyle = (active) => ({
+    width: 36, height: 36, borderRadius: '50%',
+    backgroundColor: active ? t.accent : t.cardAlt,
+    border: `1px solid ${active ? t.accent : t.border}`,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    cursor: 'pointer', position: 'relative', flexShrink: 0,
+    color: active ? t.accentText : t.textSub,
+  })
+
   const installBtnStyle = {
     width: 36, height: 36, borderRadius: 10,
     backgroundColor: t.accent,
@@ -80,6 +199,15 @@ export default function Navbar() {
     cursor: 'pointer', flexShrink: 0,
     boxShadow: `0 2px 8px ${t.accent}55`,
     position: 'relative',
+  }
+
+  const badgeStyle = {
+    position: 'absolute', top: -4, right: -4,
+    backgroundColor: '#ef4444', color: '#fff',
+    borderRadius: '50%', width: 18, height: 18,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    fontSize: 10, fontWeight: 800, border: `2px solid ${t.card}`,
+    lineHeight: 1, pointerEvents: 'none',
   }
 
   return (
@@ -155,6 +283,24 @@ export default function Navbar() {
               )}
             </Link>
 
+            {/* Desktop notification bell */}
+            <div ref={desktopNotifRef} style={{ position: 'relative' }}>
+              <button onClick={toggleNotif} style={bellButtonStyle(showNotifDropdown)}>
+                <BellIcon />
+                {unreadCount > 0 && (
+                  <span style={badgeStyle}>{unreadCount > 9 ? '9+' : unreadCount}</span>
+                )}
+              </button>
+              {showNotifDropdown && (
+                <NotifDropdown
+                  notifications={notifications}
+                  onMarkAsRead={markAsRead}
+                  onMarkAllAsRead={markAllAsRead}
+                  t={t}
+                />
+              )}
+            </div>
+
             <button onClick={toggleTheme} style={{
               width: 36, height: 36, borderRadius: '50%',
               backgroundColor: t.cardAlt, border: `1px solid ${t.border}`,
@@ -183,6 +329,24 @@ export default function Navbar() {
                 }}>{cartCount}</span>
               )}
             </Link>
+
+            {/* Mobile notification bell */}
+            <div ref={mobileNotifRef} style={{ position: 'relative' }}>
+              <button onClick={toggleNotif} style={bellButtonStyle(showNotifDropdown)}>
+                <BellIcon />
+                {unreadCount > 0 && (
+                  <span style={badgeStyle}>{unreadCount > 9 ? '9+' : unreadCount}</span>
+                )}
+              </button>
+              {showNotifDropdown && (
+                <NotifDropdown
+                  notifications={notifications}
+                  onMarkAsRead={markAsRead}
+                  onMarkAllAsRead={markAllAsRead}
+                  t={t}
+                />
+              )}
+            </div>
 
             {/* Install button — only when installable */}
             {showInstallBtn && (
@@ -247,7 +411,6 @@ export default function Navbar() {
           </div>
         )}
       </nav>
-      {/* iOS install modal */}
       {showIOSModal && <IOSInstallModal onClose={() => setShowIOSModal(false)} />}
     </>
   )
