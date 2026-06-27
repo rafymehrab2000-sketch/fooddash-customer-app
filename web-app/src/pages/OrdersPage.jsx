@@ -146,8 +146,9 @@ export default function OrdersPage() {
     const handleStatusChanged = (data) => {
       const { orderId, status } = data ?? {}
       if (!orderId || !status) return
+      const id = Number(orderId)
       setOrders(prev =>
-        prev.map(o => o.id === orderId ? { ...o, status } : o)
+        prev.map(o => o.id === id ? { ...o, status } : o)
       )
     }
 

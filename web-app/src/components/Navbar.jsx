@@ -28,16 +28,17 @@ function BellIcon() {
   )
 }
 
-function NotifDropdown({ notifications, onMarkAsRead, onMarkAllAsRead, t }) {
+function NotifDropdown({ notifications, onMarkAsRead, onMarkAllAsRead, t, dropdownRef, posStyle }) {
   const hasUnread = notifications.some(n => !n.read)
   return (
-    <div style={{
-      position: 'absolute', right: 0, top: 'calc(100% + 8px)',
-      width: 320, maxWidth: 'calc(100vw - 24px)', maxHeight: 420, overflowY: 'auto',
+    <div ref={dropdownRef} style={{
+      position: 'fixed',
+      width: 320, maxWidth: 'calc(100vw - 24px)', maxHeight: 'calc(100vh - 80px)', overflowY: 'auto',
       backgroundColor: t.card, borderRadius: 16,
       border: `1px solid ${t.border}`,
       boxShadow: '0 8px 32px rgba(0,0,0,0.22)',
-      zIndex: 300,
+      zIndex: 9999,
+      ...posStyle,
     }}>
       <div style={{
         padding: '14px 16px 12px', borderBottom: `1px solid ${t.border}`,
@@ -125,6 +126,8 @@ export default function Navbar() {
 
   const desktopNotifRef = useRef(null)
   const mobileNotifRef = useRef(null)
+  const dropdownRef = useRef(null)
+  const [dropdownPos, setDropdownPos] = useState({ top: 68, right: 12 })
 
   const isActive = (path) => location.pathname === path
 
@@ -140,7 +143,8 @@ export default function Navbar() {
     const handler = (e) => {
       const inDesktop = desktopNotifRef.current?.contains(e.target)
       const inMobile = mobileNotifRef.current?.contains(e.target)
-      if (!inDesktop && !inMobile) setShowNotifDropdown(false)
+      const inDropdown = dropdownRef.current?.contains(e.target)
+      if (!inDesktop && !inMobile && !inDropdown) setShowNotifDropdown(false)
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
@@ -179,7 +183,17 @@ export default function Navbar() {
     }
   }
 
-  const toggleNotif = () => setShowNotifDropdown(o => !o)
+  const toggleNotif = (refEl) => {
+    if (!showNotifDropdown && refEl) {
+      const rect = refEl.getBoundingClientRect()
+      setDropdownPos({
+        top: Math.round(rect.bottom + 8),
+        right: Math.round(window.innerWidth - rect.right),
+      })
+    }
+    setMenuOpen(false)
+    setShowNotifDropdown(o => !o)
+  }
 
   const bellButtonStyle = (active) => ({
     width: 36, height: 36, borderRadius: '50%',
@@ -285,22 +299,13 @@ export default function Navbar() {
 
             {/* Desktop notification bell */}
             <div ref={desktopNotifRef} style={{ position: 'relative' }}>
-              <button onClick={toggleNotif} style={bellButtonStyle(showNotifDropdown)}>
+              <button onClick={() => toggleNotif(desktopNotifRef.current)} style={bellButtonStyle(showNotifDropdown)}>
                 <BellIcon />
                 {unreadCount > 0 && (
                   <span style={badgeStyle}>{unreadCount > 9 ? '9+' : unreadCount}</span>
                 )}
               </button>
-              {showNotifDropdown && (
-                <NotifDropdown
-                  notifications={notifications}
-                  onMarkAsRead={markAsRead}
-                  onMarkAllAsRead={markAllAsRead}
-                  t={t}
-                />
-              )}
             </div>
-
             <button onClick={toggleTheme} style={{
               width: 36, height: 36, borderRadius: '50%',
               backgroundColor: t.cardAlt, border: `1px solid ${t.border}`,
@@ -332,20 +337,12 @@ export default function Navbar() {
 
             {/* Mobile notification bell */}
             <div ref={mobileNotifRef} style={{ position: 'relative' }}>
-              <button onClick={toggleNotif} style={bellButtonStyle(showNotifDropdown)}>
+              <button onClick={() => toggleNotif(mobileNotifRef.current)} style={bellButtonStyle(showNotifDropdown)}>
                 <BellIcon />
                 {unreadCount > 0 && (
                   <span style={badgeStyle}>{unreadCount > 9 ? '9+' : unreadCount}</span>
                 )}
               </button>
-              {showNotifDropdown && (
-                <NotifDropdown
-                  notifications={notifications}
-                  onMarkAsRead={markAsRead}
-                  onMarkAllAsRead={markAllAsRead}
-                  t={t}
-                />
-              )}
             </div>
 
             {/* Install button — only when installable */}
@@ -365,7 +362,7 @@ export default function Navbar() {
 
             {/* Hamburger */}
             <button
-              onClick={() => setMenuOpen(o => !o)}
+              onClick={() => { setShowNotifDropdown(false); setMenuOpen(o => !o) }}
               style={{
                 width: 36, height: 36, borderRadius: 10,
                 backgroundColor: menuOpen ? t.accent : t.cardAlt,
@@ -412,6 +409,16 @@ export default function Navbar() {
         )}
       </nav>
       {showIOSModal && <IOSInstallModal onClose={() => setShowIOSModal(false)} />}
+      {showNotifDropdown && (
+        <NotifDropdown
+          notifications={notifications}
+          onMarkAsRead={markAsRead}
+          onMarkAllAsRead={markAllAsRead}
+          t={t}
+          dropdownRef={dropdownRef}
+          posStyle={dropdownPos}
+        />
+      )}
     </>
   )
 }
