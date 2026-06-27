@@ -215,7 +215,9 @@ function AppContent() {
       });
     };
 
-    setupPushNotifications();
+    setupPushNotifications().catch((e) =>
+      console.error('Push notification setup failed:', e)
+    );
 
     return () => subscription?.remove();
   }, [isLoggedIn]);
