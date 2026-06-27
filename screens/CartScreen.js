@@ -83,10 +83,10 @@ export default function CartScreen({ navigation }) {
         amount: Math.round(total * 100),
       });
       const userStr = await AsyncStorage.getItem('user');
-      const user = JSON.parse(userStr);
+      const user = userStr ? JSON.parse(userStr) : null;
       await API.post('/orders', {
         restaurantId: restaurant.id,
-        customerName: user.name,
+        customerName: user?.name ?? '',
         customerPhone: phone,
         customerAddress: address,
         subtotal, deliveryFee, serviceFee, total,
@@ -96,12 +96,16 @@ export default function CartScreen({ navigation }) {
           price: item.price,
         }))
       });
-      clearCart();
       setShowPayment(false);
       Alert.alert(
         '🎉 Order Placed!',
         'Payment successful! Your order is on its way.',
-        [{ text: 'OK', onPress: () => navigation.reset({ index: 0, routes: [{ name: 'Main' }] }) }]
+        [{
+          text: 'OK', onPress: () => {
+            clearCart();
+            navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
+          }
+        }]
       );
     } catch (err) {
       Alert.alert('Payment Failed', 'Unable to process payment. Please try again.');
