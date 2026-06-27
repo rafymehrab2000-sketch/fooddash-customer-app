@@ -21,6 +21,14 @@ import SplashScreen from './screens/SplashScreen';
 import NotificationsScreen from './screens/NotificationsScreen';
 import SearchScreen from './screens/SearchScreen';
 
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
+
 function CartTabScreen({ navigation }) {
   const { theme } = useTheme();
   const { items, restaurant, cartCount, cartTotal } = useCart();
@@ -215,11 +223,19 @@ function AppContent() {
       });
     };
 
+    const tapSub = Notifications.addNotificationResponseReceivedListener((response) => {
+      const { title, body } = response.notification.request.content;
+      Alert.alert(title ?? 'Notification', body ?? '');
+    });
+
     setupPushNotifications().catch((e) =>
       console.error('Push notification setup failed:', e)
     );
 
-    return () => subscription?.remove();
+    return () => {
+      subscription?.remove();
+      tapSub.remove();
+    };
   }, [isLoggedIn]);
 
   const checkLogin = async () => {
