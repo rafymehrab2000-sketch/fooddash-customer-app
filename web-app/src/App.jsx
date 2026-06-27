@@ -1,8 +1,10 @@
-import React, { useEffect, useRef } from 'react'
+import React, { useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
 import { useTheme } from './context/ThemeContext'
 import { NotificationsProvider, useNotifications } from './context/NotificationsContext'
+import { SocketProvider, useSocket } from './context/SocketContext'
+import { ToastProvider, useToast } from './components/Toast'
 import Navbar from './components/Navbar'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
@@ -11,75 +13,77 @@ import RestaurantPage from './pages/RestaurantPage'
 import CartPage from './pages/CartPage'
 import OrdersPage from './pages/OrdersPage'
 import ProfilePage from './pages/ProfilePage'
-import API from './api'
 
 const ORDER_STATUS_MESSAGES = {
   accepted: {
     title: 'Order Accepted! ✅',
     body: (name) => `${name} has accepted your order and is preparing it.`,
+    type: 'success',
   },
   preparing: {
     title: 'Order Being Prepared 👨‍🍳',
     body: (name) => `${name} is preparing your food now.`,
+    type: 'info',
   },
   out_for_delivery: {
     title: 'Your Order is On Its Way! 🛵',
     body: (name) => `Your order from ${name} is out for delivery.`,
+    type: 'info',
   },
   picked_up: {
     title: 'Rider Picked Up Your Order! 🛵',
     body: (name) => `Your order from ${name} has been picked up.`,
+    type: 'info',
   },
   delivered: {
     title: 'Order Delivered! 🎉',
     body: (name) => `Your order from ${name} has arrived. Enjoy your meal!`,
+    type: 'success',
+  },
+  cancelled: {
+    title: 'Order Cancelled ❌',
+    body: (name) => `Your order from ${name} was cancelled.`,
+    type: 'error',
   },
 }
 
-function OrderNotificationsPoller() {
-  const { isLoggedIn } = useAuth()
+function SocketListener() {
+  const { socket } = useSocket()
+  const { user } = useAuth()
   const { addNotification } = useNotifications()
-  const prevStatuses = useRef({})
-  const initialized = useRef(false)
+  const { showToast } = useToast()
 
   useEffect(() => {
-    if (!isLoggedIn) return
+    if (!socket) return
 
-    const poll = async () => {
-      try {
-        const res = await API.get('/orders')
-        const orders = res.data
-
-        if (!initialized.current) {
-          orders.forEach(o => { prevStatuses.current[o.id] = o.status })
-          initialized.current = true
-          return
-        }
-
-        orders.forEach(order => {
-          const prev = prevStatuses.current[order.id]
-          if (prev !== undefined && prev !== order.status) {
-            const msg = ORDER_STATUS_MESSAGES[order.status]
-            if (msg) {
-              addNotification(
-                `order-${order.id}-${order.status}`,
-                msg.title,
-                msg.body(order.restaurant?.name ?? 'your restaurant')
-              )
-            }
-          }
-          prevStatuses.current[order.id] = order.status
-        })
-      } catch {}
+    const handleOrderStatusChanged = (data) => {
+      const { orderId, status, restaurantName } = data
+      const msg = ORDER_STATUS_MESSAGES[status]
+      if (!msg) return
+      const name = restaurantName ?? 'your restaurant'
+      addNotification(
+        `order-${orderId}-${status}`,
+        msg.title,
+        msg.body(name),
+      )
+      showToast(msg.title, msg.body(name), msg.type)
     }
 
-    poll()
-    const interval = setInterval(poll, 30000)
+    const handlePersonalNotification = (data) => {
+      const { title, body, type } = data ?? {}
+      if (!title) return
+      addNotification(`personal-${Date.now()}`, title, body ?? '')
+      showToast(title, body ?? '', type ?? 'info')
+    }
+
+    socket.on('order_status_changed', handleOrderStatusChanged)
+    if (user?.id) socket.on(`customer_${user.id}`, handlePersonalNotification)
+
     return () => {
-      clearInterval(interval)
-      initialized.current = false
+      socket.off('order_status_changed', handleOrderStatusChanged)
+      if (user?.id) socket.off(`customer_${user.id}`, handlePersonalNotification)
     }
-  }, [isLoggedIn, addNotification])
+  }, [socket, user?.id, addNotification, showToast])
 
   return null
 }
@@ -114,7 +118,7 @@ function AppRoutes() {
 
   return (
     <>
-      <OrderNotificationsPoller />
+      <SocketListener />
       <div style={{ backgroundColor: theme.bg, minHeight: '100vh', color: theme.text }}>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
@@ -134,7 +138,11 @@ function AppRoutes() {
 export default function App() {
   return (
     <NotificationsProvider>
-      <AppRoutes />
+      <SocketProvider>
+        <ToastProvider>
+          <AppRoutes />
+        </ToastProvider>
+      </SocketProvider>
     </NotificationsProvider>
   )
 }

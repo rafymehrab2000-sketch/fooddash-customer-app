@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useTheme } from '../context/ThemeContext'
+import { useSocket } from '../context/SocketContext'
 import API from '../api'
 
 const STATUS_COLOR = {
@@ -121,20 +122,43 @@ function RiderCard({ rider, t }) {
 
 export default function OrdersPage() {
   const { theme: t } = useTheme()
+  const { socket } = useSocket()
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
 
-  useEffect(() => { fetchOrders() }, [])
-
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async () => {
     try {
       const res = await API.get('/orders')
       setOrders([...res.data].reverse())
     } catch { console.error('Failed to fetch orders') }
     setLoading(false)
     setRefreshing(false)
-  }
+  }, [])
+
+  useEffect(() => { fetchOrders() }, [fetchOrders])
+
+  useEffect(() => {
+    if (!socket) return
+
+    const handleNewOrder = () => fetchOrders()
+
+    const handleStatusChanged = (data) => {
+      const { orderId, status } = data ?? {}
+      if (!orderId || !status) return
+      setOrders(prev =>
+        prev.map(o => o.id === orderId ? { ...o, status } : o)
+      )
+    }
+
+    socket.on('new_order', handleNewOrder)
+    socket.on('order_status_changed', handleStatusChanged)
+
+    return () => {
+      socket.off('new_order', handleNewOrder)
+      socket.off('order_status_changed', handleStatusChanged)
+    }
+  }, [socket, fetchOrders])
 
   return (
     <div style={{ backgroundColor: t.bg, minHeight: '100vh' }}>
@@ -142,7 +166,14 @@ export default function OrdersPage() {
       <div style={{ backgroundColor: t.card, borderBottom: `1px solid ${t.border}`, padding: '24px 20px' }}>
         <div style={{ maxWidth: 800, margin: '0 auto' }}>
           <div style={{ fontSize: 28, fontWeight: 800, color: t.accent, marginBottom: 4 }}>My Orders</div>
-          <div style={{ fontSize: 15, color: t.textMuted }}>Track your deliveries</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ fontSize: 15, color: t.textMuted }}>Track your deliveries</div>
+            <div style={{
+              width: 8, height: 8, borderRadius: 4,
+              backgroundColor: socket?.connected ? '#4CAF50' : '#f44336',
+              flexShrink: 0,
+            }} title={socket?.connected ? 'Live updates active' : 'Connecting...'} />
+          </div>
         </div>
       </div>
 
@@ -183,6 +214,7 @@ export default function OrdersPage() {
                     display: 'flex', alignItems: 'center', gap: 5,
                     backgroundColor: STATUS_COLOR[order.status] || '#888',
                     color: '#fff', padding: '6px 12px', borderRadius: 20,
+                    transition: 'background-color 0.4s ease',
                   }}>
                     <span style={{ fontSize: 13 }}>{STATUS_EMOJI[order.status] || '📋'}</span>
                     <span style={{ fontSize: 12, fontWeight: 700, textTransform: 'capitalize' }}>
