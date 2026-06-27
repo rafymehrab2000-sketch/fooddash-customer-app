@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   View, Text, FlatList, StyleSheet, TouchableOpacity,
   ActivityIndicator, RefreshControl, Alert
 } from 'react-native';
 import API from '../services/api';
 import { useTheme } from '../context/ThemeContext';
+import { useSocket } from '../context/SocketContext';
 
 const getStatusColor = (status) => {
   switch (status) {
@@ -117,15 +118,14 @@ function RiderCard({ rider, styles }) {
 
 export default function OrderTrackingScreen() {
   const { theme } = useTheme();
+  const { socket } = useSocket();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => { fetchOrders(); }, []);
-
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async () => {
     try {
       const response = await API.get('/orders');
       setOrders(response.data.reverse());
@@ -134,7 +134,31 @@ export default function OrderTrackingScreen() {
     }
     setLoading(false);
     setRefreshing(false);
-  };
+  }, []);
+
+  useEffect(() => { fetchOrders(); }, [fetchOrders]);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleNewOrder = () => fetchOrders();
+
+    const handleStatusChanged = (data) => {
+      const { orderId, status } = data ?? {};
+      if (!orderId || !status) return;
+      setOrders(prev =>
+        prev.map(o => o.id === orderId ? { ...o, status } : o)
+      );
+    };
+
+    socket.on('new_order', handleNewOrder);
+    socket.on('order_status_changed', handleStatusChanged);
+
+    return () => {
+      socket.off('new_order', handleNewOrder);
+      socket.off('order_status_changed', handleStatusChanged);
+    };
+  }, [socket, fetchOrders]);
 
   const renderProgressBar = (status) => {
     if (status === 'cancelled') return null;
@@ -198,7 +222,10 @@ export default function OrderTrackingScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>My Orders</Text>
-        <Text style={styles.headerSubtitle}>Track your deliveries</Text>
+        <View style={styles.headerSubRow}>
+          <Text style={styles.headerSubtitle}>Track your deliveries</Text>
+          <View style={[styles.liveIndicator, { backgroundColor: socket?.connected ? '#4CAF50' : '#f44336' }]} />
+        </View>
       </View>
 
       {loading ? (
@@ -240,7 +267,9 @@ function createStyles(t) {
 
     header: { backgroundColor: t.card, paddingHorizontal: 20, paddingTop: 54, paddingBottom: 24 },
     headerTitle: { fontSize: 28, fontWeight: '800', color: t.accent, marginBottom: 4 },
+    headerSubRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     headerSubtitle: { fontSize: 15, color: t.textFaint2 },
+    liveIndicator: { width: 8, height: 8, borderRadius: 4 },
 
     loader: { flex: 1 },
     list: { padding: 16, paddingTop: 8 },

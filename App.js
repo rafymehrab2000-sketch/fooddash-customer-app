@@ -11,6 +11,8 @@ import API from './services/api';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { CartProvider, useCart } from './context/CartContext';
 import { NotificationsProvider, useNotifications } from './context/NotificationsContext';
+import { SocketProvider, useSocket } from './context/SocketContext';
+import { ToastProvider, useToast } from './components/Toast';
 import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
 import HomeScreen from './screens/HomeScreen';
@@ -29,6 +31,75 @@ Notifications.setNotificationHandler({
     shouldSetBadge: false,
   }),
 });
+
+const ORDER_STATUS_MESSAGES = {
+  accepted: {
+    title: 'Order Accepted! ✅',
+    body: (name) => `${name} has accepted your order and is preparing it.`,
+    type: 'success',
+  },
+  preparing: {
+    title: 'Order Being Prepared 👨‍🍳',
+    body: (name) => `${name} is preparing your food now.`,
+    type: 'info',
+  },
+  out_for_delivery: {
+    title: 'Your Order is On Its Way! 🛵',
+    body: (name) => `Your order from ${name} is out for delivery.`,
+    type: 'info',
+  },
+  picked_up: {
+    title: 'Rider Picked Up Your Order! 🛵',
+    body: (name) => `Your order from ${name} has been picked up.`,
+    type: 'info',
+  },
+  delivered: {
+    title: 'Order Delivered! 🎉',
+    body: (name) => `Your order from ${name} has arrived. Enjoy your meal!`,
+    type: 'success',
+  },
+  cancelled: {
+    title: 'Order Cancelled ❌',
+    body: (name) => `Your order from ${name} was cancelled.`,
+    type: 'error',
+  },
+};
+
+function SocketListener() {
+  const { socket, userId } = useSocket();
+  const { addNotification } = useNotifications();
+  const { showToast } = useToast();
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleOrderStatusChanged = (data) => {
+      const { orderId, status, restaurantName } = data ?? {};
+      const msg = ORDER_STATUS_MESSAGES[status];
+      if (!msg) return;
+      const name = restaurantName ?? 'your restaurant';
+      addNotification(`order-${orderId}-${status}`, msg.title, msg.body(name));
+      showToast(msg.title, msg.body(name), msg.type);
+    };
+
+    const handlePersonalNotification = (data) => {
+      const { title, body, type } = data ?? {};
+      if (!title) return;
+      addNotification(`personal-${Date.now()}`, title, body ?? '');
+      showToast(title, body ?? '', type ?? 'info');
+    };
+
+    socket.on('order_status_changed', handleOrderStatusChanged);
+    if (userId) socket.on(`customer_${userId}`, handlePersonalNotification);
+
+    return () => {
+      socket.off('order_status_changed', handleOrderStatusChanged);
+      if (userId) socket.off(`customer_${userId}`, handlePersonalNotification);
+    };
+  }, [socket, userId, addNotification, showToast]);
+
+  return null;
+}
 
 function CartTabScreen({ navigation }) {
   const { theme } = useTheme();
@@ -266,25 +337,30 @@ function AppContent() {
   }
 
   return (
-    <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {!isLoggedIn ? (
-          <>
-            <Stack.Screen name="Login">
-              {(props) => <LoginScreen {...props} onLoginSuccess={handleAuthSuccess} />}
-            </Stack.Screen>
-            <Stack.Screen name="Register" component={RegisterScreen} />
-          </>
-        ) : (
-          <>
-            <Stack.Screen name="Main" component={MainTabs} />
-            <Stack.Screen name="Restaurant" component={RestaurantScreen} />
-            <Stack.Screen name="Cart" component={CartScreen} />
-            <Stack.Screen name="Search" component={SearchScreen} />
-          </>
-        )}
-      </Stack.Navigator>
-    </NavigationContainer>
+    <SocketProvider isLoggedIn={isLoggedIn}>
+      <ToastProvider>
+        <SocketListener />
+        <NavigationContainer>
+          <Stack.Navigator screenOptions={{ headerShown: false }}>
+            {!isLoggedIn ? (
+              <>
+                <Stack.Screen name="Login">
+                  {(props) => <LoginScreen {...props} onLoginSuccess={handleAuthSuccess} />}
+                </Stack.Screen>
+                <Stack.Screen name="Register" component={RegisterScreen} />
+              </>
+            ) : (
+              <>
+                <Stack.Screen name="Main" component={MainTabs} />
+                <Stack.Screen name="Restaurant" component={RestaurantScreen} />
+                <Stack.Screen name="Cart" component={CartScreen} />
+                <Stack.Screen name="Search" component={SearchScreen} />
+              </>
+            )}
+          </Stack.Navigator>
+        </NavigationContainer>
+      </ToastProvider>
+    </SocketProvider>
   );
 }
 
