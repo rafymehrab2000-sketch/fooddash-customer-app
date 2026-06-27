@@ -3,7 +3,6 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
 import { useTheme } from './context/ThemeContext'
 import Navbar from './components/Navbar'
-import InstallBanner from './components/InstallBanner'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import HomePage from './pages/HomePage'
@@ -54,8 +53,6 @@ export default function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
 
-      {/* PWA install prompt — shown after 3s on mobile */}
-      <InstallBanner />
     </div>
   )
 }

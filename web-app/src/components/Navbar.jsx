@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useTheme } from '../context/ThemeContext'
 import { useCart } from '../context/CartContext'
@@ -9,15 +9,90 @@ const NAV_LINKS = [
   { to: '/profile', label: '👤 Profile' },
 ]
 
+function DownloadIcon() {
+  return (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 16l-6-6h3.5V4h5v6H18l-6 6z"/>
+      <rect x="4" y="19" width="16" height="2" rx="1"/>
+    </svg>
+  )
+}
+
 export default function Navbar() {
   const { theme: t, isDark, toggleTheme } = useTheme()
   const { cartCount } = useCart()
   const location = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
+  const [deferredPrompt, setDeferredPrompt] = useState(null)
+  const [showInstallBtn, setShowInstallBtn] = useState(false)
+  const [isIOS, setIsIOS] = useState(false)
+  const [showIOSHint, setShowIOSHint] = useState(false)
+  const installBtnRef = useRef(null)
+
   const isActive = (path) => location.pathname === path
 
   // Close mobile menu on navigation
-  useEffect(() => { setMenuOpen(false) }, [location.pathname])
+  useEffect(() => {
+    setMenuOpen(false)
+    setShowIOSHint(false)
+  }, [location.pathname])
+
+  // PWA install detection
+  useEffect(() => {
+    // Already installed — hide button
+    if (window.matchMedia('(display-mode: standalone)').matches) return
+    if (window.navigator.standalone) return
+
+    const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream
+    setIsIOS(ios)
+    if (ios) setShowInstallBtn(true)
+
+    const handler = e => {
+      e.preventDefault()
+      setDeferredPrompt(e)
+      setShowInstallBtn(true)
+    }
+    window.addEventListener('beforeinstallprompt', handler)
+    return () => window.removeEventListener('beforeinstallprompt', handler)
+  }, [])
+
+  // Close iOS hint when clicking outside
+  useEffect(() => {
+    if (!showIOSHint) return
+    const handler = e => {
+      if (installBtnRef.current && !installBtnRef.current.contains(e.target)) {
+        setShowIOSHint(false)
+      }
+    }
+    document.addEventListener('pointerdown', handler)
+    return () => document.removeEventListener('pointerdown', handler)
+  }, [showIOSHint])
+
+  const handleInstall = async () => {
+    if (isIOS) {
+      setShowIOSHint(h => !h)
+      return
+    }
+    if (deferredPrompt) {
+      deferredPrompt.prompt()
+      const { outcome } = await deferredPrompt.userChoice
+      if (outcome === 'accepted') {
+        setShowInstallBtn(false)
+        setDeferredPrompt(null)
+      }
+    }
+  }
+
+  const installBtnStyle = {
+    width: 36, height: 36, borderRadius: 10,
+    backgroundColor: t.accent,
+    border: `1px solid ${t.accent}`,
+    color: t.accentText,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    cursor: 'pointer', flexShrink: 0,
+    boxShadow: `0 2px 8px ${t.accent}55`,
+    position: 'relative',
+  }
 
   return (
     <>
@@ -36,7 +111,6 @@ export default function Navbar() {
         position: 'sticky', top: 0, zIndex: 100,
         boxShadow: '0 2px 12px rgba(0,0,0,0.12)',
       }}>
-        {/* Main bar */}
         <div style={{
           maxWidth: 1200, margin: '0 auto', padding: '0 16px',
           height: 60, display: 'flex', alignItems: 'center',
@@ -54,7 +128,7 @@ export default function Navbar() {
             <span style={{ fontSize: 18, fontWeight: 800, color: t.text }}>FoodDash</span>
           </Link>
 
-          {/* Desktop nav links */}
+          {/* Desktop nav */}
           <div className="fd-links" style={{ alignItems: 'center', gap: 6 }}>
             {NAV_LINKS.map(({ to, label }) => (
               <Link key={to} to={to} style={{
@@ -96,9 +170,9 @@ export default function Navbar() {
             }}>{isDark ? '☀️' : '🌙'}</button>
           </div>
 
-          {/* Mobile: cart badge + theme toggle + hamburger */}
+          {/* Mobile row */}
           <div className="fd-hamburger" style={{ alignItems: 'center', gap: 8 }}>
-            {/* Cart icon with badge */}
+            {/* Cart icon */}
             <Link to="/cart" style={{
               position: 'relative', display: 'flex', alignItems: 'center',
               justifyContent: 'center', width: 36, height: 36, borderRadius: 10,
@@ -116,6 +190,43 @@ export default function Navbar() {
                 }}>{cartCount}</span>
               )}
             </Link>
+
+            {/* Install button — only when installable */}
+            {showInstallBtn && (
+              <div ref={installBtnRef} style={{ position: 'relative' }}>
+                <button onClick={handleInstall} style={installBtnStyle} title="Add to Home Screen">
+                  <DownloadIcon />
+                </button>
+
+                {/* iOS popover */}
+                {showIOSHint && (
+                  <div style={{
+                    position: 'absolute', top: 46, right: 0,
+                    backgroundColor: t.card,
+                    border: `1px solid ${t.accent}`,
+                    borderRadius: 14, padding: '12px 14px',
+                    width: 210,
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
+                    zIndex: 200,
+                  }}>
+                    {/* Arrow */}
+                    <div style={{
+                      position: 'absolute', top: -7, right: 11,
+                      width: 12, height: 12,
+                      backgroundColor: t.card,
+                      border: `1px solid ${t.accent}`,
+                      borderBottom: 'none', borderRight: 'none',
+                      transform: 'rotate(45deg)',
+                    }} />
+                    <div style={{ fontSize: 13, color: t.text, lineHeight: 1.5 }}>
+                      Tap <span style={{ fontSize: 15 }}>⬆</span>{' '}
+                      <strong style={{ color: t.accent }}>Share</strong>, then{' '}
+                      <strong style={{ color: t.accent }}>Add to Home Screen</strong>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Theme toggle */}
             <button onClick={toggleTheme} style={{
@@ -152,7 +263,7 @@ export default function Navbar() {
           </div>
         </div>
 
-        {/* Mobile dropdown menu */}
+        {/* Mobile dropdown */}
         {menuOpen && (
           <div style={{
             borderTop: `1px solid ${t.border}`,
@@ -160,19 +271,15 @@ export default function Navbar() {
             padding: '8px 16px 16px',
           }}>
             {NAV_LINKS.map(({ to, label }) => (
-              <Link
-                key={to}
-                to={to}
-                style={{
-                  display: 'flex', alignItems: 'center',
-                  padding: '13px 16px', borderRadius: 14,
-                  fontSize: 15, fontWeight: 600,
-                  color: isActive(to) ? t.accent : t.text,
-                  backgroundColor: isActive(to) ? t.cardAlt : 'transparent',
-                  textDecoration: 'none', marginBottom: 4,
-                  transition: 'background 0.15s',
-                }}
-              >{label}</Link>
+              <Link key={to} to={to} style={{
+                display: 'flex', alignItems: 'center',
+                padding: '13px 16px', borderRadius: 14,
+                fontSize: 15, fontWeight: 600,
+                color: isActive(to) ? t.accent : t.text,
+                backgroundColor: isActive(to) ? t.cardAlt : 'transparent',
+                textDecoration: 'none', marginBottom: 4,
+                transition: 'background 0.15s',
+              }}>{label}</Link>
             ))}
           </div>
         )}
