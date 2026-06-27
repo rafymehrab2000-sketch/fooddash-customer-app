@@ -1,89 +1,26 @@
-import React, { useState, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet
 } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
+import { useNotifications } from '../context/NotificationsContext';
 
-const INITIAL_NOTIFICATIONS = [
-  {
-    id: '1',
-    type: 'order',
-    icon: '🛵',
-    title: 'Order out for delivery',
-    body: 'Your order from Burger Palace is on its way! ETA 12 min.',
-    time: '2 min ago',
-    read: false,
-  },
-  {
-    id: '2',
-    type: 'order',
-    icon: '✅',
-    title: 'Order confirmed',
-    body: 'Sushi Garden has accepted your order and is now preparing it.',
-    time: '18 min ago',
-    read: false,
-  },
-  {
-    id: '3',
-    type: 'promo',
-    icon: '🎁',
-    title: '20% off your next order',
-    body: 'Use code DASH20 at checkout. Valid until end of this week.',
-    time: '1 hour ago',
-    read: false,
-  },
-  {
-    id: '4',
-    type: 'order',
-    icon: '🎉',
-    title: 'Order delivered!',
-    body: 'Your order from Pizza Roma has been delivered. Enjoy your meal!',
-    time: '3 hours ago',
-    read: true,
-  },
-  {
-    id: '5',
-    type: 'promo',
-    icon: '⭐',
-    title: 'New restaurant nearby',
-    body: 'Asian Garden just joined FoodDash. Check out their menu!',
-    time: 'Yesterday',
-    read: true,
-  },
-  {
-    id: '6',
-    type: 'system',
-    icon: '📢',
-    title: 'Welcome to FoodDash!',
-    body: 'Browse restaurants, add items to cart and get food delivered to your door.',
-    time: '2 days ago',
-    read: true,
-  },
-];
-
-const TYPE_COLORS = {
-  order: '#2196F3',
-  promo: '#F5A623',
-  system: '#9C27B0',
-};
+function formatTime(isoString) {
+  const diff = Date.now() - new Date(isoString).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return `${mins} min ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+  const days = Math.floor(hours / 24);
+  if (days === 1) return 'Yesterday';
+  return `${days} days ago`;
+}
 
 export default function NotificationsScreen() {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
-
-  const [notifications, setNotifications] = useState(INITIAL_NOTIFICATIONS);
-
-  const unreadCount = notifications.filter(n => !n.read).length;
-
-  const markAsRead = (id) => {
-    setNotifications(prev =>
-      prev.map(n => n.id === id ? { ...n, read: true } : n)
-    );
-  };
-
-  const markAllAsRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-  };
+  const { notifications, markAsRead, markAllAsRead, unreadCount } = useNotifications();
 
   const renderItem = ({ item }) => (
     <TouchableOpacity
@@ -91,8 +28,8 @@ export default function NotificationsScreen() {
       onPress={() => markAsRead(item.id)}
       activeOpacity={0.75}
     >
-      <View style={[styles.iconBox, { backgroundColor: TYPE_COLORS[item.type] + '22' }]}>
-        <Text style={styles.iconText}>{item.icon}</Text>
+      <View style={styles.iconBox}>
+        <Text style={styles.iconText}>🔔</Text>
         {!item.read && <View style={styles.unreadDot} />}
       </View>
       <View style={styles.textBlock}>
@@ -100,7 +37,7 @@ export default function NotificationsScreen() {
           <Text style={[styles.title, !item.read && styles.titleUnread]} numberOfLines={1}>
             {item.title}
           </Text>
-          <Text style={styles.time}>{item.time}</Text>
+          <Text style={styles.time}>{formatTime(item.time)}</Text>
         </View>
         <Text style={styles.body} numberOfLines={2}>{item.body}</Text>
       </View>
@@ -134,8 +71,8 @@ export default function NotificationsScreen() {
         ListEmptyComponent={
           <View style={styles.empty}>
             <Text style={styles.emptyIcon}>🔔</Text>
-            <Text style={styles.emptyText}>No notifications</Text>
-            <Text style={styles.emptySubtext}>You're all caught up!</Text>
+            <Text style={styles.emptyText}>No notifications yet</Text>
+            <Text style={styles.emptySubtext}>Order updates and alerts will appear here</Text>
           </View>
         }
       />
@@ -172,6 +109,7 @@ function createStyles(t) {
     iconBox: {
       width: 46, height: 46, borderRadius: 14,
       alignItems: 'center', justifyContent: 'center',
+      backgroundColor: t.accent + '22',
       position: 'relative', flexShrink: 0,
     },
     iconText: { fontSize: 22 },
@@ -193,6 +131,6 @@ function createStyles(t) {
     empty: { alignItems: 'center', paddingTop: 80 },
     emptyIcon: { fontSize: 56, marginBottom: 16 },
     emptyText: { fontSize: 20, fontWeight: '700', color: t.text, marginBottom: 8 },
-    emptySubtext: { fontSize: 14, color: t.textMuted },
+    emptySubtext: { fontSize: 14, color: t.textMuted, textAlign: 'center', paddingHorizontal: 32 },
   });
 }

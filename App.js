@@ -10,6 +10,7 @@ import Constants from 'expo-constants';
 import API from './services/api';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { CartProvider, useCart } from './context/CartContext';
+import { NotificationsProvider, useNotifications } from './context/NotificationsContext';
 import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
 import HomeScreen from './screens/HomeScreen';
@@ -158,6 +159,7 @@ const Tab = createBottomTabNavigator();
 function MainTabs() {
   const { theme } = useTheme();
   const { cartCount } = useCart();
+  const { unreadCount } = useNotifications();
   return (
     <Tab.Navigator
       screenOptions={{
@@ -178,7 +180,7 @@ function MainTabs() {
       <Tab.Screen name="Home" component={HomeScreen} options={{ tabBarIcon: ({ color, focused }) => <Ionicons name={focused ? 'home' : 'home-outline'} size={24} color={color} />, tabBarLabel: 'Home' }} />
       <Tab.Screen name="CartTab" component={CartTabScreen} options={{ tabBarIcon: ({ color, focused }) => <Ionicons name={focused ? 'cart' : 'cart-outline'} size={24} color={color} />, tabBarLabel: 'Cart', tabBarBadge: cartCount > 0 ? cartCount : undefined }} />
       <Tab.Screen name="Orders" component={OrderTrackingScreen} options={{ tabBarIcon: ({ color, focused }) => <Ionicons name={focused ? 'receipt' : 'receipt-outline'} size={24} color={color} />, tabBarLabel: 'Orders' }} />
-      <Tab.Screen name="Notifications" component={NotificationsScreen} options={{ tabBarIcon: ({ color, focused }) => <Ionicons name={focused ? 'notifications' : 'notifications-outline'} size={24} color={color} />, tabBarLabel: 'Alerts' }} />
+      <Tab.Screen name="Notifications" component={NotificationsScreen} options={{ tabBarIcon: ({ color, focused }) => <Ionicons name={focused ? 'notifications' : 'notifications-outline'} size={24} color={color} />, tabBarLabel: 'Alerts', tabBarBadge: unreadCount > 0 ? unreadCount : undefined }} />
       <Tab.Screen name="Profile" component={ProfileScreen} options={{ tabBarIcon: ({ color, focused }) => <Ionicons name={focused ? 'person' : 'person-outline'} size={24} color={color} />, tabBarLabel: 'Profile' }} />
     </Tab.Navigator>
   );
@@ -188,6 +190,7 @@ function AppContent() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [authReady, setAuthReady] = useState(false);
   const [splashDone, setSplashDone] = useState(false);
+  const { addNotification } = useNotifications();
 
   useEffect(() => { checkLogin(); }, []);
 
@@ -216,16 +219,24 @@ function AppContent() {
         console.error('Failed to save push token:', e);
       }
 
+      // Store foreground notifications in the list (system banner handles display)
       subscription = Notifications.addNotificationReceivedListener((notification) => {
-        const title = notification.request.content.title ?? 'Notification';
-        const body = notification.request.content.body ?? '';
-        Alert.alert(title, body);
+        const { title, body } = notification.request.content;
+        addNotification(notification.request.identifier, title, body);
       });
+
+      // Handle app launch from a notification (killed state)
+      const lastResponse = await Notifications.getLastNotificationResponseAsync();
+      if (lastResponse) {
+        const { title, body } = lastResponse.notification.request.content;
+        addNotification(lastResponse.notification.request.identifier, title, body);
+      }
     };
 
+    // Store tapped notifications (backgrounded state); deduped by identifier
     const tapSub = Notifications.addNotificationResponseReceivedListener((response) => {
       const { title, body } = response.notification.request.content;
-      Alert.alert(title ?? 'Notification', body ?? '');
+      addNotification(response.notification.request.identifier, title, body);
     });
 
     setupPushNotifications().catch((e) =>
@@ -236,7 +247,7 @@ function AppContent() {
       subscription?.remove();
       tapSub.remove();
     };
-  }, [isLoggedIn]);
+  }, [isLoggedIn, addNotification]);
 
   const checkLogin = async () => {
     try {
@@ -281,7 +292,9 @@ export default function App() {
   return (
     <ThemeProvider>
       <CartProvider>
-        <AppContent />
+        <NotificationsProvider>
+          <AppContent />
+        </NotificationsProvider>
       </CartProvider>
     </ThemeProvider>
   );
