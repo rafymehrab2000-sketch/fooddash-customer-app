@@ -91,9 +91,14 @@ export default function Navbar() {
           .fd-links { display: none; }
           .fd-hamburger { display: flex; }
         }
+        @media (display-mode: standalone) {
+          .fd-nav {
+            padding-top: env(safe-area-inset-top);
+          }
+        }
       `}</style>
 
-      <nav style={{
+      <nav className="fd-nav" style={{
         backgroundColor: t.card,
         borderBottom: `1px solid ${t.border}`,
         position: 'sticky', top: 0, zIndex: 100,
