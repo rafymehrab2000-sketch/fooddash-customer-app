@@ -2,7 +2,7 @@ import React, { useState, useRef, useMemo } from 'react';
 import {
   View, Text, TouchableOpacity,
   StyleSheet, TextInput, Alert, ActivityIndicator, ScrollView,
-  KeyboardAvoidingView, Platform
+  KeyboardAvoidingView, Platform, Modal
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import API from '../services/api';
@@ -30,7 +30,15 @@ export default function CartScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [focusedField, setFocusedField] = useState(null);
 
+  const [showPayment, setShowPayment] = useState(false);
+  const [cardNumber, setCardNumber] = useState('');
+  const [cardExpiry, setCardExpiry] = useState('');
+  const [cardCvv, setCardCvv] = useState('');
+  const [payFocused, setPayFocused] = useState(null);
+
   const addressRef = useRef(null);
+  const expiryRef = useRef(null);
+  const cvvRef = useRef(null);
 
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const deliveryFee = 3.50;
@@ -41,13 +49,39 @@ export default function CartScreen({ navigation }) {
   const isAddressValid = address.trim().length >= 5;
   const canOrder = isPhoneValid && isAddressValid;
 
-  const placeOrder = async () => {
+  const handleCardNumberChange = (text) => {
+    const digits = text.replace(/\D/g, '').slice(0, 16);
+    setCardNumber(digits.replace(/(.{4})/g, '$1 ').trim());
+  };
+
+  const handleExpiryChange = (text) => {
+    const digits = text.replace(/\D/g, '');
+    if (digits.length <= 2) {
+      setCardExpiry(digits);
+    } else {
+      setCardExpiry(digits.slice(0, 2) + '/' + digits.slice(2, 4));
+    }
+  };
+
+  const isCardValid = cardNumber.replace(/\s/g, '').length === 16;
+  const isExpiryValid = /^\d{2}\/\d{2}$/.test(cardExpiry);
+  const isCvvValid = cardCvv.length >= 3;
+  const canPay = isCardValid && isExpiryValid && isCvvValid;
+
+  const openPayment = () => {
     if (!address || !phone) {
       Alert.alert('Error', 'Please fill in your address and phone number');
       return;
     }
+    setShowPayment(true);
+  };
+
+  const handlePayment = async () => {
     setLoading(true);
     try {
+      await API.post('/payment/create-payment-intent', {
+        amount: Math.round(total * 100),
+      });
       const userStr = await AsyncStorage.getItem('user');
       const user = JSON.parse(userStr);
       await API.post('/orders', {
@@ -63,13 +97,14 @@ export default function CartScreen({ navigation }) {
         }))
       });
       clearCart();
+      setShowPayment(false);
       Alert.alert(
         '🎉 Order Placed!',
-        'Your order has been placed successfully!',
+        'Payment successful! Your order is on its way.',
         [{ text: 'OK', onPress: () => navigation.reset({ index: 0, routes: [{ name: 'Main' }] }) }]
       );
     } catch (err) {
-      Alert.alert('Error', 'Failed to place order. Please try again.');
+      Alert.alert('Payment Failed', 'Unable to process payment. Please try again.');
     }
     setLoading(false);
   };
@@ -166,7 +201,7 @@ export default function CartScreen({ navigation }) {
 
       <TouchableOpacity
         style={[styles.orderButton, !canOrder && styles.orderButtonDisabled, loading && styles.orderButtonLoading]}
-        onPress={placeOrder}
+        onPress={openPayment}
         disabled={loading}
       >
         {loading ? (
@@ -189,6 +224,100 @@ export default function CartScreen({ navigation }) {
       </TouchableOpacity>
 
     </ScrollView>
+
+    <Modal visible={showPayment} animationType="slide" transparent onRequestClose={() => setShowPayment(false)}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHandle} />
+            <Text style={styles.modalTitle}>Pay with Card</Text>
+            <Text style={styles.modalSubtitle}>Secure payment · Powered by Stripe</Text>
+
+            <Text style={styles.cardLabel}>Card Number</Text>
+            <View style={[styles.cardInput, payFocused === 'card' && styles.cardInputFocused]}>
+              <Text style={styles.cardIcon}>💳</Text>
+              <TextInput
+                style={styles.cardField}
+                value={cardNumber}
+                onChangeText={handleCardNumberChange}
+                placeholder="4242 4242 4242 4242"
+                placeholderTextColor={theme.textMuted}
+                keyboardType="numeric"
+                maxLength={19}
+                returnKeyType="next"
+                onSubmitEditing={() => expiryRef.current?.focus()}
+                onFocus={() => setPayFocused('card')}
+                onBlur={() => setPayFocused(null)}
+              />
+            </View>
+
+            <View style={styles.cardRow}>
+              <View style={styles.cardHalf}>
+                <Text style={styles.cardLabel}>Expiry</Text>
+                <View style={[styles.cardInput, payFocused === 'expiry' && styles.cardInputFocused]}>
+                  <TextInput
+                    ref={expiryRef}
+                    style={styles.cardField}
+                    value={cardExpiry}
+                    onChangeText={handleExpiryChange}
+                    placeholder="MM/YY"
+                    placeholderTextColor={theme.textMuted}
+                    keyboardType="numeric"
+                    maxLength={5}
+                    returnKeyType="next"
+                    onSubmitEditing={() => cvvRef.current?.focus()}
+                    onFocus={() => setPayFocused('expiry')}
+                    onBlur={() => setPayFocused(null)}
+                  />
+                </View>
+              </View>
+              <View style={styles.cardHalf}>
+                <Text style={styles.cardLabel}>CVV</Text>
+                <View style={[styles.cardInput, payFocused === 'cvv' && styles.cardInputFocused]}>
+                  <TextInput
+                    ref={cvvRef}
+                    style={styles.cardField}
+                    value={cardCvv}
+                    onChangeText={v => setCardCvv(v.replace(/\D/g, '').slice(0, 4))}
+                    placeholder="123"
+                    placeholderTextColor={theme.textMuted}
+                    keyboardType="numeric"
+                    maxLength={4}
+                    secureTextEntry
+                    onFocus={() => setPayFocused('cvv')}
+                    onBlur={() => setPayFocused(null)}
+                  />
+                </View>
+              </View>
+            </View>
+
+            <Text style={styles.testHint}>Test: 4242 4242 4242 4242 · 12/26 · 123</Text>
+
+            <TouchableOpacity
+              style={[styles.payButton, (!canPay || loading) && styles.payButtonDisabled]}
+              onPress={handlePayment}
+              disabled={!canPay || loading}
+            >
+              {loading ? (
+                <View style={styles.payButtonInner}>
+                  <ActivityIndicator color={theme.accentText} size="small" />
+                  <Text style={styles.payButtonText}>Processing...</Text>
+                </View>
+              ) : (
+                <Text style={[styles.payButtonText, !canPay && styles.payButtonTextDisabled]}>
+                  {canPay ? `Pay €${total.toFixed(2)}` : 'Enter card details'}
+                </Text>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.cancelButton} onPress={() => setShowPayment(false)} disabled={loading}>
+              <Text style={styles.cancelText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
+
     </KeyboardAvoidingView>
   );
 }
@@ -263,5 +392,57 @@ function createStyles(t) {
     orderButtonTextDisabled: { color: t.textMuted },
     orderButtonPricePill: { backgroundColor: t.accentText, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 6 },
     orderButtonPrice: { fontSize: 15, fontWeight: '800', color: t.accent },
+
+    modalOverlay: {
+      flex: 1, justifyContent: 'flex-end',
+      backgroundColor: 'rgba(0,0,0,0.55)',
+    },
+    modalSheet: {
+      backgroundColor: t.card, borderTopLeftRadius: 28, borderTopRightRadius: 28,
+      paddingHorizontal: 24, paddingBottom: 40, paddingTop: 16,
+    },
+    modalHandle: {
+      width: 40, height: 4, borderRadius: 2,
+      backgroundColor: t.border, alignSelf: 'center', marginBottom: 24,
+    },
+    modalTitle: { fontSize: 22, fontWeight: '800', color: t.text, marginBottom: 4 },
+    modalSubtitle: { fontSize: 13, color: t.textMuted, marginBottom: 24 },
+
+    cardLabel: { fontSize: 12, fontWeight: '700', color: t.textSub, marginBottom: 8, letterSpacing: 0.5 },
+    cardInput: {
+      flexDirection: 'row', alignItems: 'center',
+      backgroundColor: t.inputBg, borderRadius: 14,
+      borderWidth: 1, borderColor: t.inputBorder,
+      paddingHorizontal: 14, marginBottom: 16, height: 52,
+    },
+    cardInputFocused: {
+      borderColor: t.accent,
+      shadowColor: t.accent, shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.2, shadowRadius: 6, elevation: 2,
+    },
+    cardIcon: { fontSize: 16, marginRight: 10 },
+    cardField: { flex: 1, fontSize: 16, color: t.text, letterSpacing: 0.5 },
+    cardRow: { flexDirection: 'row', gap: 12 },
+    cardHalf: { flex: 1 },
+
+    testHint: {
+      fontSize: 11, color: t.textDim, textAlign: 'center',
+      marginBottom: 24, marginTop: 4,
+    },
+
+    payButton: {
+      backgroundColor: t.accent, borderRadius: 16, padding: 18,
+      alignItems: 'center', justifyContent: 'center',
+      shadowColor: t.accent, shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.4, shadowRadius: 10, elevation: 6,
+      marginBottom: 12,
+    },
+    payButtonDisabled: { backgroundColor: t.inputBg, shadowOpacity: 0 },
+    payButtonInner: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    payButtonText: { fontSize: 17, fontWeight: '800', color: t.accentText },
+    payButtonTextDisabled: { color: t.textMuted },
+
+    cancelButton: { alignItems: 'center', paddingVertical: 12 },
+    cancelText: { fontSize: 15, color: t.textMuted, fontWeight: '600' },
   });
 }
