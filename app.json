@@ -24,6 +24,12 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "36072e20-bda6-47b8-9554-ad1822d5c3fa"
+      }
+    },
+    "owner": "rafymehrab"
   }
 }
