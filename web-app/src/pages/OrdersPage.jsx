@@ -139,6 +139,7 @@ export default function OrdersPage() {
   useEffect(() => {
     if (!socket) return
 
+    const handleConnect = () => fetchOrders()
     const handleNewOrder = () => fetchOrders()
 
     const handleStatusChanged = (data) => {
@@ -150,10 +151,12 @@ export default function OrdersPage() {
       )
     }
 
+    socket.on('connect', handleConnect)
     socket.on('new_order', handleNewOrder)
     socket.on('order_status_changed', handleStatusChanged)
 
     return () => {
+      socket.off('connect', handleConnect)
       socket.off('new_order', handleNewOrder)
       socket.off('order_status_changed', handleStatusChanged)
     }
