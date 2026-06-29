@@ -54,6 +54,12 @@ function SocketListener() {
   const { showToast } = useToast()
 
   useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission()
+    }
+  }, [])
+
+  useEffect(() => {
     if (!socket) return
 
     const handleOrderStatusChanged = (data) => {
@@ -67,6 +73,13 @@ function SocketListener() {
         msg.body(name),
       )
       showToast(msg.title, msg.body(name), msg.type)
+
+      if (status === 'delivered' && 'Notification' in window && Notification.permission === 'granted') {
+        new Notification('Order Delivered! 🎉', {
+          body: 'Your food has arrived!',
+          icon: '/icon.svg',
+        })
+      }
     }
 
     const handlePersonalNotification = (data) => {

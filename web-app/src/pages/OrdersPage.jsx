@@ -125,15 +125,13 @@ export default function OrdersPage() {
   const { socket } = useSocket()
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
 
   const fetchOrders = useCallback(async () => {
     try {
       const res = await API.get('/orders')
-      setOrders([...res.data].reverse())
+      setOrders([...res.data].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)))
     } catch { console.error('Failed to fetch orders') }
     setLoading(false)
-    setRefreshing(false)
   }, [])
 
   useEffect(() => { fetchOrders() }, [fetchOrders])
@@ -179,19 +177,11 @@ export default function OrdersPage() {
       </div>
 
       <div style={{ maxWidth: 800, margin: '0 auto', padding: '24px 20px' }}>
-        {/* Refresh */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          {!loading && <div style={{ fontSize: 13, color: t.textMuted }}>{orders.length} order{orders.length !== 1 ? 's' : ''}</div>}
-          <button
-            onClick={() => { setRefreshing(true); fetchOrders() }}
-            disabled={refreshing}
-            style={{
-              backgroundColor: t.cardAlt, border: `1px solid ${t.border}`,
-              borderRadius: 20, padding: '7px 16px', fontSize: 13, fontWeight: 600,
-              color: t.textSub, cursor: 'pointer', marginLeft: 'auto',
-            }}
-          >{refreshing ? 'Refreshing...' : '↻ Refresh'}</button>
-        </div>
+        {!loading && (
+          <div style={{ fontSize: 13, color: t.textMuted, marginBottom: 16 }}>
+            {orders.length} order{orders.length !== 1 ? 's' : ''}
+          </div>
+        )}
 
         {loading ? (
           <div style={{ textAlign: 'center', padding: '60px 0', color: t.accent, fontSize: 32 }}>⏳</div>
