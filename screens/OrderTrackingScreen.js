@@ -3,6 +3,7 @@ import {
   View, Text, FlatList, StyleSheet, TouchableOpacity,
   ActivityIndicator, RefreshControl, Alert
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import API from '../services/api';
 import { useTheme } from '../context/ThemeContext';
 import { useSocket } from '../context/SocketContext';
@@ -125,16 +126,47 @@ export default function OrderTrackingScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
+  // Tracks order IDs that have already shown the delivered alert
+  const alertedOrdersRef = useRef(new Set());
+
   const fetchOrders = useCallback(async () => {
     try {
       const response = await API.get('/orders');
-      setOrders(response.data.reverse());
+      const data = response.data.reverse();
+      // Pre-populate so orders already delivered on load don't trigger an alert
+      data.forEach(o => {
+        if (o.status === 'delivered') alertedOrdersRef.current.add(o.id);
+      });
+      setOrders(data);
     } catch (err) {
       console.error('Failed to fetch orders');
     }
     setLoading(false);
     setRefreshing(false);
   }, []);
+
+  const pollOrders = useCallback(async () => {
+    try {
+      const response = await API.get('/orders');
+      const newOrders = response.data.reverse();
+      newOrders.forEach(order => {
+        if (order.status === 'delivered' && !alertedOrdersRef.current.has(order.id)) {
+          alertedOrdersRef.current.add(order.id);
+          Alert.alert('Order Delivered!', '🎉 Your order has been delivered! Enjoy your meal!');
+        }
+      });
+      setOrders(newOrders);
+    } catch (err) {
+      console.error('Failed to poll orders');
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      const intervalId = setInterval(pollOrders, 15000);
+      return () => clearInterval(intervalId);
+    }, [pollOrders])
+  );
 
   useEffect(() => { fetchOrders(); }, [fetchOrders]);
 
