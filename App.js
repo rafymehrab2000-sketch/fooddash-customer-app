@@ -73,13 +73,17 @@ function SocketListener() {
   useEffect(() => {
     if (!socket) return;
 
-    const handleOrderStatusChanged = (data) => {
+    const handleOrderStatusChanged = async (data) => {
       const { orderId, status, restaurantName } = data ?? {};
       const msg = ORDER_STATUS_MESSAGES[status];
       if (!msg) return;
       const name = restaurantName ?? 'your restaurant';
       addNotification(`order-${orderId}-${status}`, msg.title, msg.body(name));
       showToast(msg.title, msg.body(name), msg.type);
+      await Notifications.scheduleNotificationAsync({
+        content: { title: msg.title, body: msg.body(name), sound: true },
+        trigger: null,
+      });
     };
 
     const handlePersonalNotification = (data) => {
