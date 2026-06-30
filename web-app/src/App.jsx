@@ -25,6 +25,11 @@ const ORDER_STATUS_MESSAGES = {
     body: (name) => `${name} is preparing your food now.`,
     type: 'info',
   },
+  ready: {
+    title: 'Order Ready! 📦',
+    body: (name) => `Your order from ${name} is ready and waiting for pickup.`,
+    type: 'info',
+  },
   out_for_delivery: {
     title: 'Your Order is On Its Way! 🛵',
     body: (name) => `Your order from ${name} is out for delivery.`,
@@ -68,7 +73,7 @@ function SocketListener() {
       if (!msg) return
       const name = restaurantName ?? 'your restaurant'
       addNotification(
-        `order-${orderId}-${status}`,
+        status === 'delivered' ? `order-${orderId}-delivered-${Date.now()}` : `order-${orderId}-${status}`,
         msg.title,
         msg.body(name),
       )
