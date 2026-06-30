@@ -144,10 +144,9 @@ export default function OrdersPage() {
 
     const handleStatusChanged = (data) => {
       const { orderId, status } = data ?? {}
-      if (!orderId || !status) return
-      const id = Number(orderId)
+      if (orderId == null || !status) return
       setOrders(prev =>
-        prev.map(o => o.id === id ? { ...o, status } : o)
+        prev.map(o => String(o.id) === String(orderId) ? { ...o, status } : o)
       )
     }
 
