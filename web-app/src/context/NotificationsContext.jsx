@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useMemo } from 'react'
 
-const STORAGE_KEY = 'fd-web-notifications'
+const STORAGE_KEY = 'fd-web-notifications-v2'
 const NotificationsContext = createContext(null)
 
 function playNotificationSound() {
