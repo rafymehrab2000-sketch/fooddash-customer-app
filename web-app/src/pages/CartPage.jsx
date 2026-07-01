@@ -192,13 +192,14 @@ export default function CartPage() {
     if (digits.startsWith('0')) digits = digits.slice(1)
     digits = digits.slice(0, 9)
     if (!digits) return ''
-    let out = '+358 ' + digits.slice(0, 2)
+    let out = digits.slice(0, 2)
     if (digits.length > 2) out += ' ' + digits.slice(2, 5)
     if (digits.length > 5) out += ' ' + digits.slice(5, 9)
     return out
   }
 
-  const isPhoneValid = /^\+358 \d{2} \d{3} \d{4}$/.test(phone)
+  const isPhoneValid = /^\d{2} \d{3} \d{4}$/.test(phone)
+  const fullPhone = phone ? `+358 ${phone}` : ''
   const isAddressValid = address.trim().length >= 5
   const isEntranceValid = entrance.trim().length > 0
   const isFloorValid = floor.trim().length > 0
@@ -228,7 +229,7 @@ export default function CartPage() {
       await API.post('/orders', {
         restaurantId: restaurant.id,
         customerName: user?.name ?? '',
-        customerPhone: phone,
+        customerPhone: fullPhone,
         customerAddress: address,
         entrance,
         floor,
@@ -325,10 +326,11 @@ export default function CartPage() {
 
           <div style={inputWrap('phone')}>
             <span style={{ fontSize: 16, marginRight: 10 }}>📞</span>
+            <span style={{ fontSize: 15, fontWeight: 600, color: t.textMuted, marginRight: 6, flexShrink: 0 }}>+358</span>
             <input
               style={inputStyle}
               type="tel"
-              placeholder="+358 XX XXX XXXX"
+              placeholder="XX XXX XXXX"
               value={phone}
               onChange={e => setPhone(formatFinnishPhone(e.target.value))}
               onFocus={() => setFocused('phone')}
