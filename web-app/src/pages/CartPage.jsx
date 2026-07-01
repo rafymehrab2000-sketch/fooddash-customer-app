@@ -186,7 +186,19 @@ export default function CartPage() {
   const serviceFee = 0.80
   const total = subtotal + deliveryFee + serviceFee
 
-  const isPhoneValid = phone.length >= 7
+  const formatFinnishPhone = (raw) => {
+    let digits = raw.replace(/\D/g, '')
+    if (digits.startsWith('358')) digits = digits.slice(3)
+    if (digits.startsWith('0')) digits = digits.slice(1)
+    digits = digits.slice(0, 9)
+    if (!digits) return ''
+    let out = '+358 ' + digits.slice(0, 2)
+    if (digits.length > 2) out += ' ' + digits.slice(2, 5)
+    if (digits.length > 5) out += ' ' + digits.slice(5, 9)
+    return out
+  }
+
+  const isPhoneValid = /^\+358 \d{2} \d{3} \d{4}$/.test(phone)
   const isAddressValid = address.trim().length >= 5
   const isEntranceValid = entrance.trim().length > 0
   const isFloorValid = floor.trim().length > 0
@@ -316,9 +328,9 @@ export default function CartPage() {
             <input
               style={inputStyle}
               type="tel"
-              placeholder="Your phone number"
+              placeholder="+358 XX XXX XXXX"
               value={phone}
-              onChange={e => setPhone(e.target.value)}
+              onChange={e => setPhone(formatFinnishPhone(e.target.value))}
               onFocus={() => setFocused('phone')}
               onBlur={() => setFocused(null)}
             />
