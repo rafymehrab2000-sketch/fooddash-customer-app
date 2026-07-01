@@ -24,7 +24,7 @@ const STATUS_EMOJI = {
 }
 
 const STATUS_STEPS = ['pending', 'accepted', 'preparing', 'ready', 'out_for_delivery', 'delivered']
-const ACTIVE_STATUSES = ['accepted', 'preparing', 'ready', 'out_for_delivery']
+const ACTIVE_STATUSES = ['accepted', 'preparing', 'ready', 'out_for_delivery', 'picked_up']
 
 function ETATimer({ startMinutes = 30, t }) {
   const [minutes, setMinutes] = useState(startMinutes)
