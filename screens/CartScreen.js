@@ -5,11 +5,10 @@ import {
   KeyboardAvoidingView, Platform, Modal
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import API from '../services/api';
 import { useTheme } from '../context/ThemeContext';
 import { useCart } from '../context/CartContext';
-
-const MAX_ADDRESS_CHARS = 120;
 
 function FieldStatus({ value, isValid, styles }) {
   if (!value) return null;
@@ -26,6 +25,10 @@ export default function CartScreen({ navigation }) {
   const { items: cart, restaurant, clearCart } = useCart();
 
   const [address, setAddress] = useState('');
+  const [entrance, setEntrance] = useState('');
+  const [floor, setFloor] = useState('');
+  const [apartment, setApartment] = useState('');
+  const [additionalInfo, setAdditionalInfo] = useState('');
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
   const [focusedField, setFocusedField] = useState(null);
@@ -36,7 +39,6 @@ export default function CartScreen({ navigation }) {
   const [cardCvv, setCardCvv] = useState('');
   const [payFocused, setPayFocused] = useState(null);
 
-  const addressRef = useRef(null);
   const expiryRef = useRef(null);
   const cvvRef = useRef(null);
 
@@ -47,7 +49,10 @@ export default function CartScreen({ navigation }) {
 
   const isPhoneValid = phone.length >= 7;
   const isAddressValid = address.trim().length >= 5;
-  const canOrder = isPhoneValid && isAddressValid;
+  const isEntranceValid = entrance.trim().length > 0;
+  const isFloorValid = floor.trim().length > 0;
+  const isApartmentValid = apartment.trim().length > 0;
+  const canOrder = isPhoneValid && isAddressValid && isEntranceValid && isFloorValid && isApartmentValid;
 
   const handleCardNumberChange = (text) => {
     const digits = text.replace(/\D/g, '').slice(0, 16);
@@ -68,9 +73,19 @@ export default function CartScreen({ navigation }) {
   const isCvvValid = cardCvv.length >= 3;
   const canPay = isCardValid && isExpiryValid && isCvvValid;
 
+  // Called when the user types in the autocomplete box — clears any previously
+  // confirmed selection so the detail fields hide until a new place is picked.
+  const clearAddressFields = () => {
+    setAddress('');
+    setEntrance('');
+    setFloor('');
+    setApartment('');
+    setAdditionalInfo('');
+  };
+
   const openPayment = () => {
-    if (!address || !phone) {
-      Alert.alert('Error', 'Please fill in your address and phone number');
+    if (!isPhoneValid || !isAddressValid || !isEntranceValid || !isFloorValid || !isApartmentValid) {
+      Alert.alert('Error', 'Please fill in all required delivery details');
       return;
     }
     setShowPayment(true);
@@ -89,6 +104,10 @@ export default function CartScreen({ navigation }) {
         customerName: user?.name ?? '',
         customerPhone: phone,
         customerAddress: address,
+        entrance,
+        floor,
+        apartment,
+        additionalInfo,
         subtotal, deliveryFee, serviceFee, total,
         items: cart.map(item => ({
           menuItemId: item.id,
@@ -153,34 +172,140 @@ export default function CartScreen({ navigation }) {
             value={phone}
             onChangeText={setPhone}
             keyboardType="phone-pad"
-            returnKeyType="next"
-            onSubmitEditing={() => addressRef.current?.focus()}
             onFocus={() => setFocusedField('phone')}
             onBlur={() => setFocusedField(null)}
           />
           <FieldStatus value={phone} isValid={isPhoneValid} styles={styles} />
         </View>
 
-        <View style={[styles.inputWrapper, styles.inputWrapperMultiline, focusedField === 'address' && styles.inputWrapperFocused]}>
-          <Text style={[styles.inputIcon, { marginTop: 2 }]}>📍</Text>
-          <TextInput
-            ref={addressRef}
-            style={[styles.input, styles.addressInput]}
-            placeholder="Delivery address"
-            placeholderTextColor={theme.textMuted}
-            value={address}
-            onChangeText={v => v.length <= MAX_ADDRESS_CHARS && setAddress(v)}
-            multiline
-            onFocus={() => setFocusedField('address')}
-            onBlur={() => setFocusedField(null)}
-          />
-        </View>
-        <View style={styles.addressMeta}>
-          <Text style={[styles.fieldStatusInline, isAddressValid ? styles.fieldStatusOk : styles.addressHint]}>
-            {address.length > 0 ? (isAddressValid ? '✓ Address looks good' : 'Enter a full address') : ''}
+        <GooglePlacesAutocomplete
+          placeholder="Search delivery address"
+          onPress={(data) => setAddress(data.description)}
+          query={{
+            key: process.env.EXPO_PUBLIC_GOOGLE_MAPS_KEY,
+            language: 'en',
+            types: 'address',
+          }}
+          styles={{
+            container: { marginBottom: 4 },
+            textInputContainer: {
+              flexDirection: 'row',
+              alignItems: 'center',
+              backgroundColor: theme.inputBg,
+              borderRadius: 14,
+              borderWidth: 1,
+              borderColor: focusedField === 'address' ? theme.accent : theme.inputBorder,
+              paddingHorizontal: 14,
+              ...(focusedField === 'address' && {
+                shadowColor: theme.accent,
+                shadowOffset: { width: 0, height: 0 },
+                shadowOpacity: 0.2,
+                shadowRadius: 6,
+                elevation: 2,
+              }),
+            },
+            textInput: {
+              flex: 1,
+              paddingVertical: 14,
+              paddingHorizontal: 0,
+              marginVertical: 0,
+              marginHorizontal: 0,
+              fontSize: 15,
+              color: theme.text,
+              backgroundColor: 'transparent',
+            },
+            listView: {
+              backgroundColor: theme.card,
+              borderRadius: 14,
+              marginTop: 4,
+              borderWidth: 1,
+              borderColor: theme.border,
+            },
+            row: { backgroundColor: theme.card, padding: 13 },
+            description: { fontSize: 14, color: theme.text },
+            separator: { backgroundColor: theme.border, height: 1 },
+          }}
+          renderLeftButton={() => (
+            <Text style={styles.inputIcon}>📍</Text>
+          )}
+          fetchDetails={false}
+          enablePoweredByContainer={false}
+          textInputProps={{
+            placeholderTextColor: theme.textMuted,
+            onFocus: () => setFocusedField('address'),
+            onBlur: () => setFocusedField(null),
+            onChangeText: clearAddressFields,
+          }}
+          keepResultsAfterBlur={false}
+        />
+
+        {isAddressValid && (
+          <Text style={[styles.fieldStatusInline, styles.fieldStatusOk, styles.addressSelectedHint]}>
+            ✓ Address selected
           </Text>
-          <Text style={styles.charCount}>{address.length}/{MAX_ADDRESS_CHARS}</Text>
-        </View>
+        )}
+
+        {isAddressValid && (
+          <>
+            <Text style={styles.detailFieldsLabel}>Complete your delivery address</Text>
+
+            <View style={[styles.inputWrapper, focusedField === 'entrance' && styles.inputWrapperFocused]}>
+              <Text style={styles.inputIcon}>🚪</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Entrance *"
+                placeholderTextColor={theme.textMuted}
+                value={entrance}
+                onChangeText={setEntrance}
+                onFocus={() => setFocusedField('entrance')}
+                onBlur={() => setFocusedField(null)}
+              />
+              <FieldStatus value={entrance} isValid={isEntranceValid} styles={styles} />
+            </View>
+
+            <View style={[styles.inputWrapper, focusedField === 'floor' && styles.inputWrapperFocused]}>
+              <Text style={styles.inputIcon}>🏢</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Floor *"
+                placeholderTextColor={theme.textMuted}
+                value={floor}
+                onChangeText={setFloor}
+                keyboardType="number-pad"
+                onFocus={() => setFocusedField('floor')}
+                onBlur={() => setFocusedField(null)}
+              />
+              <FieldStatus value={floor} isValid={isFloorValid} styles={styles} />
+            </View>
+
+            <View style={[styles.inputWrapper, focusedField === 'apartment' && styles.inputWrapperFocused]}>
+              <Text style={styles.inputIcon}>🏠</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Apartment number *"
+                placeholderTextColor={theme.textMuted}
+                value={apartment}
+                onChangeText={setApartment}
+                onFocus={() => setFocusedField('apartment')}
+                onBlur={() => setFocusedField(null)}
+              />
+              <FieldStatus value={apartment} isValid={isApartmentValid} styles={styles} />
+            </View>
+
+            <View style={[styles.inputWrapper, focusedField === 'additionalInfo' && styles.inputWrapperFocused]}>
+              <Text style={styles.inputIcon}>📝</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Additional info (optional)"
+                placeholderTextColor={theme.textMuted}
+                value={additionalInfo}
+                onChangeText={setAdditionalInfo}
+                onFocus={() => setFocusedField('additionalInfo')}
+                onBlur={() => setFocusedField(null)}
+              />
+            </View>
+          </>
+        )}
       </View>
 
       <View style={styles.section}>
@@ -363,18 +488,19 @@ function createStyles(t) {
       shadowColor: t.accent, shadowOffset: { width: 0, height: 0 },
       shadowOpacity: 0.2, shadowRadius: 6, elevation: 2,
     },
-    inputWrapperMultiline: { alignItems: 'flex-start', paddingTop: 14, marginBottom: 6 },
     inputIcon: { fontSize: 16, marginRight: 10 },
     input: { flex: 1, paddingVertical: 14, fontSize: 15, color: t.text },
-    addressInput: { height: 80, textAlignVertical: 'top' },
 
     fieldStatus: { fontSize: 16, fontWeight: '800', marginLeft: 8 },
     fieldStatusOk: { color: t.good },
     fieldStatusErr: { color: t.bad },
     fieldStatusInline: { fontSize: 12, fontWeight: '600' },
-    addressMeta: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4, paddingHorizontal: 4 },
-    addressHint: { color: t.textMuted },
-    charCount: { fontSize: 12, color: t.textDim },
+
+    addressSelectedHint: { marginBottom: 10, paddingHorizontal: 4 },
+    detailFieldsLabel: {
+      fontSize: 12, fontWeight: '700', color: t.textSub,
+      marginBottom: 12, letterSpacing: 0.3,
+    },
 
     priceRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 9, borderBottomWidth: 1, borderBottomColor: t.borderDark },
     priceLabel: { fontSize: 14, color: t.textSub },
