@@ -68,12 +68,15 @@ function SocketListener() {
     if (!socket) return
 
     const handleOrderStatusChanged = (data) => {
-      const { orderId, status, restaurantName } = data
+      const { orderId, status, restaurantName } = data ?? {}
       const msg = ORDER_STATUS_MESSAGES[status]
       if (!msg) return
       const name = restaurantName ?? 'your restaurant'
+      const notifId = (status === 'out_for_delivery' || status === 'delivered')
+        ? `order-${orderId}-${status}-${Date.now()}`
+        : `order-${orderId}-${status}`
       addNotification(
-        status === 'delivered' ? `order-${orderId}-delivered-${Date.now()}` : `order-${orderId}-${status}`,
+        notifId,
         msg.title,
         msg.body(name),
       )
