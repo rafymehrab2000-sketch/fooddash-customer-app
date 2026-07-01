@@ -1,11 +1,9 @@
-import React, { useState } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTheme } from '../context/ThemeContext'
 import { useCart } from '../context/CartContext'
 import { useAuth } from '../context/AuthContext'
 import API from '../api'
-
-const MAX_ADDR = 120
 
 function PaymentModal({ t, total, onClose, onPay, loading }) {
   const [cardNumber, setCardNumber] = useState('')
@@ -131,12 +129,57 @@ export default function CartPage() {
   const { user } = useAuth()
   const navigate = useNavigate()
 
+  const addressInputRef = useRef(null)
+  const autocompleteRef = useRef(null)
+
   const [address, setAddress] = useState('')
+  const [entrance, setEntrance] = useState('')
+  const [floor, setFloor] = useState('')
+  const [apartment, setApartment] = useState('')
+  const [additionalInfo, setAdditionalInfo] = useState('')
   const [phone, setPhone] = useState('')
   const [loading, setLoading] = useState(false)
   const [showPayment, setShowPayment] = useState(false)
   const [focused, setFocused] = useState(null)
   const [success, setSuccess] = useState(false)
+
+  useEffect(() => {
+    const initAutocomplete = () => {
+      if (!addressInputRef.current || !window.google?.maps?.places) return
+      const ac = new window.google.maps.places.Autocomplete(addressInputRef.current, {
+        types: ['address'],
+      })
+      autocompleteRef.current = ac
+      ac.addListener('place_changed', () => {
+        const place = ac.getPlace()
+        setAddress(place.formatted_address || addressInputRef.current.value)
+      })
+    }
+
+    if (window.google?.maps?.places) {
+      initAutocomplete()
+      return
+    }
+
+    const scriptId = 'google-maps-places-script'
+    const existing = document.getElementById(scriptId)
+    if (!existing) {
+      const script = document.createElement('script')
+      script.id = scriptId
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${import.meta.env.VITE_GOOGLE_MAPS_KEY}&libraries=places`
+      script.async = true
+      script.onload = initAutocomplete
+      document.head.appendChild(script)
+    } else {
+      existing.addEventListener('load', initAutocomplete)
+    }
+
+    return () => {
+      if (autocompleteRef.current && window.google?.maps?.event) {
+        window.google.maps.event.clearInstanceListeners(autocompleteRef.current)
+      }
+    }
+  }, [])
 
   const subtotal = cart.reduce((s, i) => s + i.price * i.quantity, 0)
   const deliveryFee = 3.50
@@ -145,10 +188,24 @@ export default function CartPage() {
 
   const isPhoneValid = phone.length >= 7
   const isAddressValid = address.trim().length >= 5
-  const canOrder = isPhoneValid && isAddressValid
+  const isEntranceValid = entrance.trim().length > 0
+  const isFloorValid = floor.trim().length > 0
+  const isApartmentValid = apartment.trim().length > 0
+  const canOrder = isPhoneValid && isAddressValid && isEntranceValid && isFloorValid && isApartmentValid
+
+  const clearAddressFields = () => {
+    setAddress('')
+    setEntrance('')
+    setFloor('')
+    setApartment('')
+    setAdditionalInfo('')
+  }
 
   const openPayment = () => {
-    if (!address || !phone) { alert('Please fill in your address and phone number'); return }
+    if (!isPhoneValid || !isAddressValid || !isEntranceValid || !isFloorValid || !isApartmentValid) {
+      alert('Please fill in all required delivery details')
+      return
+    }
     setShowPayment(true)
   }
 
@@ -161,6 +218,10 @@ export default function CartPage() {
         customerName: user?.name ?? '',
         customerPhone: phone,
         customerAddress: address,
+        entrance,
+        floor,
+        apartment,
+        additionalInfo,
         subtotal, deliveryFee, serviceFee, total,
         items: cart.map(item => ({ menuItemId: item.id, quantity: item.quantity, price: item.price })),
       })
@@ -219,7 +280,7 @@ export default function CartPage() {
 
         {/* Header */}
         <div style={{ marginBottom: 24 }}>
-          <button onClick={() => navigate(-1)} style={{ color: t.textMuted, fontSize: 15, cursor: 'pointer', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <button onClick={() => navigate(-1)} style={{ color: t.textMuted, fontSize: 15, cursor: 'pointer', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none' }}>
             ← Back
           </button>
           <div style={{ fontSize: 28, fontWeight: 800, color: t.text, marginBottom: 8 }}>Your Cart</div>
@@ -264,23 +325,85 @@ export default function CartPage() {
             {phone && <span style={{ fontSize: 16, color: isPhoneValid ? t.good : t.bad }}>{isPhoneValid ? '✓' : '✗'}</span>}
           </div>
 
-          <div style={{ ...inputWrap('address'), alignItems: 'flex-start', paddingTop: 14 }}>
-            <span style={{ fontSize: 16, marginRight: 10, marginTop: 2 }}>📍</span>
-            <textarea
-              style={{ ...inputStyle, height: 80, resize: 'vertical', paddingTop: 0 }}
-              placeholder="Delivery address"
-              value={address}
-              onChange={e => e.target.value.length <= MAX_ADDR && setAddress(e.target.value)}
+          {/* Address — Google Places Autocomplete attaches to this input */}
+          <div style={inputWrap('address')}>
+            <span style={{ fontSize: 16, marginRight: 10 }}>📍</span>
+            <input
+              ref={addressInputRef}
+              style={inputStyle}
+              placeholder="Search delivery address"
+              onChange={e => { if (!e.target.value) clearAddressFields() }}
               onFocus={() => setFocused('address')}
               onBlur={() => setFocused(null)}
             />
+            {isAddressValid && <span style={{ fontSize: 16, color: t.good }}>✓</span>}
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: -4, paddingLeft: 4 }}>
-            <span style={{ fontSize: 12, color: isAddressValid ? t.good : t.textMuted }}>
-              {address.length > 0 ? (isAddressValid ? '✓ Address looks good' : 'Enter a full address') : ''}
-            </span>
-            <span style={{ fontSize: 12, color: t.textDim }}>{address.length}/{MAX_ADDR}</span>
-          </div>
+          {isAddressValid && (
+            <div style={{ fontSize: 12, fontWeight: 600, color: t.good, paddingLeft: 4, marginTop: -4, marginBottom: 14 }}>
+              ✓ Address selected
+            </div>
+          )}
+
+          {/* Detail fields — appear after a place is selected */}
+          {isAddressValid && (
+            <>
+              <div style={{ fontSize: 12, fontWeight: 700, color: t.textSub, marginBottom: 12, letterSpacing: 0.3 }}>
+                Complete your delivery address
+              </div>
+
+              <div style={inputWrap('entrance')}>
+                <span style={{ fontSize: 16, marginRight: 10 }}>🚪</span>
+                <input
+                  style={inputStyle}
+                  placeholder="Entrance *"
+                  value={entrance}
+                  onChange={e => setEntrance(e.target.value)}
+                  onFocus={() => setFocused('entrance')}
+                  onBlur={() => setFocused(null)}
+                />
+                {entrance && <span style={{ fontSize: 16, color: isEntranceValid ? t.good : t.bad }}>{isEntranceValid ? '✓' : '✗'}</span>}
+              </div>
+
+              <div style={inputWrap('floor')}>
+                <span style={{ fontSize: 16, marginRight: 10 }}>🏢</span>
+                <input
+                  style={inputStyle}
+                  placeholder="Floor *"
+                  inputMode="numeric"
+                  value={floor}
+                  onChange={e => setFloor(e.target.value)}
+                  onFocus={() => setFocused('floor')}
+                  onBlur={() => setFocused(null)}
+                />
+                {floor && <span style={{ fontSize: 16, color: isFloorValid ? t.good : t.bad }}>{isFloorValid ? '✓' : '✗'}</span>}
+              </div>
+
+              <div style={inputWrap('apartment')}>
+                <span style={{ fontSize: 16, marginRight: 10 }}>🏠</span>
+                <input
+                  style={inputStyle}
+                  placeholder="Apartment number *"
+                  value={apartment}
+                  onChange={e => setApartment(e.target.value)}
+                  onFocus={() => setFocused('apartment')}
+                  onBlur={() => setFocused(null)}
+                />
+                {apartment && <span style={{ fontSize: 16, color: isApartmentValid ? t.good : t.bad }}>{isApartmentValid ? '✓' : '✗'}</span>}
+              </div>
+
+              <div style={{ ...inputWrap('additionalInfo'), marginBottom: 0 }}>
+                <span style={{ fontSize: 16, marginRight: 10 }}>📝</span>
+                <input
+                  style={inputStyle}
+                  placeholder="Additional info (optional)"
+                  value={additionalInfo}
+                  onChange={e => setAdditionalInfo(e.target.value)}
+                  onFocus={() => setFocused('additionalInfo')}
+                  onBlur={() => setFocused(null)}
+                />
+              </div>
+            </>
+          )}
         </div>
 
         {/* Price Summary */}
